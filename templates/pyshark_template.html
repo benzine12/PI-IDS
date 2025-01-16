@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiDS Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: #007BFF;
+            color: #fff;
+            padding: 1rem 0;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            margin: 20px 0;
+            border-collapse: collapse;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        table thead {
+            background: #007BFF;
+            color: #fff;
+        }
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        table tr:nth-child(even) {
+            background: #f4f4f4;
+        }
+        .stats {
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 15px;
+            margin: 10px 5px;
+            background: #007BFF;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Wireless Intrusion Detection System</h1>
+    </header>
+    <div class="container">
+        <div class="stats">
+            <h2>System Statistics</h2>
+            <p id="stats">Loading...</p>
+        </div>
+        <div class="stats">
+            <h2>Deauthentication Attacks</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Source MAC</th>
+                        <th>Destination MAC</th>
+                        <th>Time</th>
+                        <th>Attack Count</th>
+                    </tr>
+                </thead>
+                <tbody id="attack-data">
+                    <tr><td colspan="4">No data yet...</td></tr>
+                </tbody>
+            </table>
+            <a href="#" class="button" id="start-sniffing">Start Sniffing</a>
+        </div>
+    </div>
+    <script>
+        async function fetchStats() {
+            const response = await fetch('/system-stats');
+            const stats = await response.json();
+            document.getElementById('stats').innerHTML = `
+                <strong>CPU Usage:</strong> ${stats.cpu.percent}%<br>
+                <strong>Memory Usage:</strong> ${stats.memory.used} GB / ${stats.memory.total} GB (${stats.memory.percent}%)<br>
+                <strong>Disk Usage:</strong> ${stats.disk.used} GB / ${stats.disk.total} GB (${stats.disk.percent}%)
+            `;
+        }
+
+        async function fetchAttackData() {
+            const response = await fetch('/packets');
+            const data = await response.json();
+            const tableBody = document.getElementById('attack-data');
+            tableBody.innerHTML = '';
+            if (data.packets.length > 0) {
+                data.packets.forEach(packet => {
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td>${packet.src_mac}</td>
+                            <td>${packet.dst_mac}</td>
+                            <td>${packet.time}</td>
+                            <td>${packet.count}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="4">No attacks detected yet...</td></tr>';
+            }
+        }
+
+        async function startSniffing() {
+            await fetch('/start_sniffing', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+            alert('Started sniffing on the configured interface.');
+        }
+
+        document.getElementById('start-sniffing').addEventListener('click', (e) => {
+            e.preventDefault();
+            startSniffing();
+        });
+
+        setInterval(fetchStats, 5000);
+        setInterval(fetchAttackData, 5000);
+        fetchStats();
+        fetchAttackData();
+    </script>
+</body>
+</html>

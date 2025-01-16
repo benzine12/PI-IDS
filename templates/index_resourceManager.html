@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raspberry Pi System Stats</title>
+    <script>
+        async function fetchStats() {
+            const response = await fetch('/system-stats');
+            const stats = await response.json();
+
+            document.getElementById('disk-usage').innerText = `${stats.disk.used} GB / ${stats.disk.total} GB (${stats.disk.percent}%)`;
+            document.getElementById('ram-usage').innerText = `${stats.memory.used} GB / ${stats.memory.total} GB (${stats.memory.percent}%)`;
+            document.getElementById('cpu-usage').innerText = `${stats.cpu.percent}%`;
+
+            // Refresh stats every 2 seconds
+            setTimeout(fetchStats, 2000);
+        }
+
+        window.onload = fetchStats;
+    </script>
+</head>
+<body>
+    <h1>Raspberry Pi System Stats</h1>
+    <p><strong>Disk Usage:</strong> <span id="disk-usage">Loading...</span></p>
+    <p><strong>RAM Usage:</strong> <span id="ram-usage">Loading...</span></p>
+    <p><strong>CPU Usage:</strong> <span id="cpu-usage">Loading...</span></p>
+</body>
+</html>
