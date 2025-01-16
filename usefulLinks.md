@@ -20,3 +20,10 @@ https://www.youtube.com/watch?v=G18OlycBTO0
 https://www.titanhq.com/dns-filtering/most-common-wireless-network-attacks/
 
 https://blog.spacehuhn.com/probe-request
+
+
+# start the deauth attack
+sudo env/bin/python3 wifi_deauth/wifi_deauth.py -i wlan2
+
+# start the server
+sudo env/bin/python3 scapy_version.py 

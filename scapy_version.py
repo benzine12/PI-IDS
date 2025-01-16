@@ -79,7 +79,7 @@ def start_sniffing(interface):
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('scapy_version.html')
 
 @app.route('/packets', methods=['GET'])
 def get_packets():
