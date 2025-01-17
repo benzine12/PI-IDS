@@ -4,6 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WIDS Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        header {
+            background-color: #007BFF;
+            color: #fff;
+            padding: 1rem 0;
+            text-align: center;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        section {
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #007BFF;
+            margin-bottom: 10px;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input, button {
+            padding: 10px;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        p {
+            font-size: 1.1rem;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stats p {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+    </style>
     <script>
         async function fetchStats() {
             const response = await fetch('/system-stats');
@@ -12,6 +104,7 @@
             document.getElementById('disk-usage').innerText = `${stats.disk.used} GB / ${stats.disk.total} GB (${stats.disk.percent}%)`;
             document.getElementById('ram-usage').innerText = `${stats.memory.used} GB / ${stats.memory.total} GB (${stats.memory.percent}%)`;
             document.getElementById('cpu-usage').innerText = `${stats.cpu.percent}%`;
+            document.getElementById('temperature').innerText = `${stats.temperature.celsius} °C`;
         }
 
         async function fetchPackets() {
@@ -22,13 +115,19 @@
 
             document.getElementById('total-packets').innerText = totalPackets;
 
-            const packetList = document.getElementById('packet-list');
-            packetList.innerHTML = '';
+            const packetTable = document.getElementById('packet-table-body');
+            packetTable.innerHTML = '';
 
             packets.forEach(packet => {
-                const item = document.createElement('li');
-                item.innerText = `Source: ${packet.src_mac}, Destination: ${packet.dst_mac}, Count: ${packet.count}, Reason: ${packet.reason_code}, Time: ${packet.time}`;
-                packetList.appendChild(item);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${packet.src_mac}</td>
+                    <td>${packet.dst_mac}</td>
+                    <td>${packet.reason_code}</td>
+                    <td>${packet.count}</td>
+                    <td>${packet.time}</td>
+                `;
+                packetTable.appendChild(row);
             });
         }
 
@@ -91,17 +190,33 @@
 
         <section>
             <h2>System Stats</h2>
-            <p><strong>Disk Usage:</strong> <span id="disk-usage">Loading...</span></p>
-            <p><strong>RAM Usage:</strong> <span id="ram-usage">Loading...</span></p>
-            <p><strong>CPU Usage:</strong> <span id="cpu-usage">Loading...</span></p>
+            <div class="stats">
+                <p><strong>Disk Usage:</strong> <span id="disk-usage">Loading...</span></p>
+                <p><strong>RAM Usage:</strong> <span id="ram-usage">Loading...</span></p>
+                <p><strong>CPU Usage:</strong> <span id="cpu-usage">Loading...</span></p>
+                <p><strong>Temperature:</strong> <span id="temperature">Loading...</span></p>
+            </div>
         </section>
 
         <section>
             <h2>Packet Analysis</h2>
             <p><strong>Total Packets Processed:</strong> <span id="total-packets">0</span></p>
-            <ul id="packet-list">
-                <li>Loading captured packets...</li>
-            </ul>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Source MAC</th>
+                        <th>Destination MAC</th>
+                        <th>Reason Code</th>
+                        <th>Count</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="packet-table-body">
+                    <tr>
+                        <td colspan="5">Loading captured packets...</td>
+                    </tr>
+                </tbody>
+            </table>
         </section>
     </main>
 </body>

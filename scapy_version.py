@@ -126,6 +126,14 @@ def system_stats():
     memory = psutil.virtual_memory()
     disk = psutil.disk_usage('/')
     cpu = psutil.cpu_percent(interval=0.5)
+
+    # Read the CPU temperature
+    try:
+        with open("/sys/class/thermal/thermal_zone0/temp", "r") as temp_file:
+            temp_c = int(temp_file.read().strip()) / 1000.0  # Convert to Celsius
+    except FileNotFoundError:
+        temp_c = None  # If the temperature file isn't available
+
     return jsonify({
         "memory": {
             "total": round(memory.total / (1024**3), 2),  # Convert to GB
@@ -139,6 +147,9 @@ def system_stats():
         },
         "cpu": {
             "percent": cpu,
+        },
+        "temperature": {
+            "celsius": round(temp_c, 2) if temp_c is not None else "N/A",
         }
     })
 
