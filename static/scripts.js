@@ -13,6 +13,20 @@ const CONFIG = {
     }
 };
 
+// Theme handling
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    // Trigger chart updates
+    updateChart();
+}
+
+function toggleTheme() {
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+}
+
 // Network Status Management
 let isServerConnected = false;
 
@@ -72,63 +86,160 @@ function toggleUserMenu() {
     userMenu.classList.toggle('hidden');
 }
 
-// Sniffing Control Functions
-async function startSniffing() {
+// Chart Management
+const MAX_POINTS = 60; // Show last 60 seconds
+const packetData = new Array(MAX_POINTS).fill(0);
+const threatData = new Array(MAX_POINTS).fill(0);
+let lastPacketCount = 0;
+let lastThreatCount = 0;
+let chartUpdateInterval = null;
+
+function updateChart() {
+    updateSingleChart('activityChart', packetData, 'activity');
+    updateSingleChart('threatChart', threatData, 'threat');
+}
+
+function updateSingleChart(chartId, data, type) {
+    const svg = document.getElementById(chartId);
+    if (!svg) return;
+
+    const width = svg.clientWidth;
+    const height = svg.clientHeight;
+    const padding = 20;
+    
+    svg.innerHTML = '';
+    
+    // Draw grid
+    for (let i = 0; i < 5; i++) {
+        const y = padding + (height - 2 * padding) * i / 4;
+        svg.innerHTML += `<line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" class="chart-grid"/>`;
+        
+        // Add Y-axis labels
+        const maxValue = Math.max(...data, 1);
+        const labelValue = Math.round(maxValue * (1 - (i / 4)));
+        svg.innerHTML += `
+            <text x="${padding - 5}" y="${y}" 
+                  class="chart-label" 
+                  text-anchor="end" 
+                  alignment-baseline="middle">
+                ${labelValue}
+            </text>
+        `;
+    }
+    
+    // Calculate points
+    const points = data.map((value, index) => {
+        const x = padding + (width - 2 * padding) * index / (MAX_POINTS - 1);
+        const y = height - padding - (height - 2 * padding) * value / Math.max(...data, 1);
+        return `${x},${y}`;
+    }).join(' ');
+    
+    // Draw line
+    svg.innerHTML += `<polyline points="${points}" class="${type === 'threat' ? 'threat-line' : 'chart-line'}"/>`;
+    
+    // Draw points
+    data.forEach((value, index) => {
+        const x = padding + (width - 2 * padding) * index / (MAX_POINTS - 1);
+        const y = height - padding - (height - 2 * padding) * value / Math.max(...data, 1);
+        svg.innerHTML += `<circle cx="${x}" cy="${y}" r="2" class="${type === 'threat' ? 'threat-point' : 'chart-point'}"/>`;
+    });
+    
+    // Draw axes
+    svg.innerHTML += `
+        <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="chart-axis"/>
+        <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" class="chart-axis"/>
+    `;
+}
+
+// Monitoring Control
+async function toggleMonitoring() {
+    const button = document.getElementById('monitoringToggle');
+    const statusIndicator = document.getElementById('status-indicator');
+    const icon = button.querySelector('i');
+    const text = button.querySelector('span');
     const interfaceInput = document.getElementById('interfaceInput').value;
     
-    try {
-        // Set interface to monitor mode
-        const monitorResponse = await fetch(CONFIG.API_ENDPOINTS.SET_MONITOR, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ interface: interfaceInput })
-        });
+    if (text.textContent === 'Start') {
+        try {
+            // Set interface to monitor mode
+            const monitorResponse = await fetch(CONFIG.API_ENDPOINTS.SET_MONITOR, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ interface: interfaceInput })
+            });
 
-        if (!monitorResponse.ok) {
-            throw new Error('Failed to set monitor mode');
+            if (!monitorResponse.ok) {
+                throw new Error('Failed to set monitor mode');
+            }
+            
+            // Start sniffing
+            const sniffResponse = await fetch(CONFIG.API_ENDPOINTS.START_SNIFFING, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ interface: interfaceInput })
+            });
+
+            if (!sniffResponse.ok) {
+                throw new Error('Failed to start sniffing');
+            }
+
+            // Update UI
+            text.textContent = 'Stop';
+            icon.classList.remove('fa-play');
+            icon.classList.add('fa-stop');
+            button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+            button.classList.add('bg-red-500', 'hover:bg-red-600');
+            statusIndicator.classList.remove('bg-red-500');
+            statusIndicator.classList.add('bg-green-500');
+            statusIndicator.textContent = 'Active';
+
+            // Start chart updates
+            startChartUpdates();
+        } catch (error) {
+            console.error('Error starting monitoring:', error);
+            alert('Failed to start monitoring. Please check the console for details.');
         }
-        
-        // Start sniffing
-        const sniffResponse = await fetch(CONFIG.API_ENDPOINTS.START_SNIFFING, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ interface: interfaceInput })
-        });
+    } else {
+        try {
+            // Stop sniffing
+            const response = await fetch(CONFIG.API_ENDPOINTS.STOP_SNIFFING, {
+                method: 'POST'
+            });
 
-        if (!sniffResponse.ok) {
-            throw new Error('Failed to start sniffing');
+            if (!response.ok) {
+                throw new Error('Failed to stop sniffing');
+            }
+
+            // Update UI
+            text.textContent = 'Start';
+            icon.classList.remove('fa-stop');
+            icon.classList.add('fa-play');
+            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+            button.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            statusIndicator.classList.remove('bg-green-500');
+            statusIndicator.classList.add('bg-red-500');
+            statusIndicator.textContent = 'Inactive';
+
+            // Stop chart updates
+            stopChartUpdates();
+        } catch (error) {
+            console.error('Error stopping monitoring:', error);
+            alert('Failed to stop monitoring. Please check the console for details.');
         }
-
-        // Update UI
-        const statusIndicator = document.getElementById('status-indicator');
-        statusIndicator.textContent = 'Status: Active';
-        statusIndicator.classList.remove('bg-red-500');
-        statusIndicator.classList.add('bg-green-500');
-        
-    } catch (error) {
-        console.error('Error starting sniffing:', error);
-        alert('Failed to start sniffing. Please check the console for details.');
     }
 }
 
-async function stopSniffing() {
-    try {
-        const response = await fetch(CONFIG.API_ENDPOINTS.STOP_SNIFFING, {
-            method: 'POST'
-        });
+function startChartUpdates() {
+    if (chartUpdateInterval) {
+        clearInterval(chartUpdateInterval);
+    }
+    chartUpdateInterval = setInterval(refreshPacketData, CONFIG.REFRESH_INTERVAL);
+}
 
-        if (!response.ok) {
-            throw new Error('Failed to stop sniffing');
-        }
-
-        const statusIndicator = document.getElementById('status-indicator');
-        statusIndicator.textContent = 'Status: Inactive';
-        statusIndicator.classList.remove('bg-green-500');
-        statusIndicator.classList.add('bg-red-500');
-        
-    } catch (error) {
-        console.error('Error stopping sniffing:', error);
-        alert('Failed to stop sniffing. Please check the console for details.');
+function stopChartUpdates() {
+    if (chartUpdateInterval) {
+        clearInterval(chartUpdateInterval);
+        chartUpdateInterval = null;
     }
 }
 
@@ -150,12 +261,13 @@ async function refreshPacketData() {
 
         const data = await response.json();
         
-        // Update total packets counter
+        // Update total packets counter and chart
         document.getElementById('totalPackets').textContent = data.total_packets;
+        updatePacketData(data.total_packets, data.threats || 0);
         
         // Update table
         const packetBody = document.getElementById('packet-table-body');
-        packetBody.innerHTML = ''; // Clear existing rows
+        packetBody.innerHTML = '';
 
         data.packets.forEach(packet => {
             const row = document.createElement('tr');
@@ -240,8 +352,18 @@ async function refreshSystemStats() {
 
 // Initialize Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize theme
+    const savedTheme = localStorage.getItem('theme') || 
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(savedTheme);
+    
+    // Initialize theme toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        themeToggle.checked = savedTheme === 'dark';
+    }
+
     // Initialize refresh intervals
-    setInterval(refreshPacketData, CONFIG.REFRESH_INTERVAL);
     setInterval(refreshSystemStats, CONFIG.REFRESH_INTERVAL);
     setInterval(checkServerConnection, CONFIG.CONNECTION_CHECK_INTERVAL);
 
@@ -258,13 +380,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initial data load
     checkServerConnection();
-    refreshPacketData();
     refreshSystemStats();
+    updateChart();  // Initialize empty chart
 });
 
-// Tab Switching Function (for future extension)
-function switchTab(tabId) {
-    // For future extension if you have multiple tabs
-    // Hide/show different sections by ID
-    console.log(`Switching to tab: ${tabId}`);
-}
+// Handle window resize
+window.addEventListener('resize', () => {
+    updateChart();
+});
