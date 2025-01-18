@@ -8,6 +8,48 @@ import psutil
 import time
 from collections import defaultdict
 
+class DeauthDetector:
+    def __init__(self, window_size=5):
+        self.window_size = window_size
+        self.deauth_history = defaultdict(list)
+        self.valid_aps = set()  # Add your valid AP MACs here
+        
+    def add_valid_ap(self, mac):
+        self.valid_aps.add(mac)
+        
+    def is_legitimate_deauth(self, packet):
+        if not packet.haslayer(Dot11Deauth):
+            return False
+        
+        legitimate_reasons = [1, 2, 3, 4]
+        if packet[Dot11Deauth].reason not in legitimate_reasons:
+            return False
+            
+        if packet[Dot11].addr2 not in self.valid_aps:
+            return False
+            
+        return True
+        
+    def detect_pattern(self, packet):
+        if not packet.haslayer(Dot11Deauth):
+            return False
+            
+        src = packet[Dot11].addr2
+        current_time = time.time()
+        
+        self.deauth_history[src].append(current_time)
+        self.deauth_history[src] = [t for t in self.deauth_history[src] 
+                                   if current_time - t <= self.window_size]
+        
+        if len(self.deauth_history[src]) >= 3:
+            intervals = [j-i for i, j in zip(self.deauth_history[src][:-1], 
+                                           self.deauth_history[src][1:])]
+            avg_interval = sum(intervals) / len(intervals)
+            if all(abs(i - avg_interval) < 0.1 for i in intervals):
+                return True
+                
+        return False
+
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
 captured_packets = []
@@ -16,6 +58,28 @@ log_file = "wids_log.txt"
 attack_log = defaultdict(list)  # Store timestamps for each target device
 attack_counts = defaultdict(int)  # Count occurrences of attacks by target
 packet_counter = 0  # Total packets processed
+
+# Add this with your other global variables
+detector = DeauthDetector()
+
+def packet_callback(packet):
+    """Enhanced packet processing"""
+    global packet_counter
+    try:
+        packet_counter += 1
+        
+        if packet.haslayer(Dot11Deauth):
+            if detector.is_legitimate_deauth(packet):
+                logging.info("Legitimate deauth detected")
+                return
+                
+            if detector.detect_pattern(packet):
+                logging.warning("Suspicious deauth pattern detected!")
+                
+            is_death_packet(packet)
+            
+    except Exception as e:
+        logging.error(f"Error in packet_callback: {e}")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
@@ -31,39 +95,52 @@ def set_monitor_mode(interface):
         return {"status": "error", "message": str(e)}
 
 def is_death_packet(packet):
-    """Identify deauthentication attack packets."""
+    """Enhanced deauthentication packet detection"""
     try:
         if packet.haslayer(Dot11Deauth):
             dot11 = packet[Dot11]
             deauth = packet[Dot11Deauth]
-            src_mac = dot11.addr1 or "Unknown"  # Receiver address
-            dst_mac = dot11.addr2 or "Unknown"  # Transmitter address
+            
+            # Get signal strength
+            signal_strength = getattr(packet, 'dBm_AntSignal', 'N/A')
+            
+            src_mac = dot11.addr1 or "Unknown"
+            dst_mac = dot11.addr2 or "Unknown"
             reason_code = deauth.reason
-            attack_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            sequence = getattr(dot11, 'SC', 0)
+            attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Track attack frequency
+            current_time = time.time()
+            attack_log[dst_mac].append(current_time)
+            
+            # Check for flood attacks
+            recent_attacks = [t for t in attack_log[dst_mac] 
+                            if current_time - t <= 1]
+            is_flood = len(recent_attacks) > 10
 
-            # Log potential deauth packet to terminal
-            logging.info(
-                f"Deauth Packet Detected: Source={src_mac}, Destination={dst_mac}, Reason={reason_code}, Time={attack_time}"
-            )
-
-            # Increment attack count for this target
+            # Update attack counts
             attack_counts[dst_mac] += 1
+            
+            # Log the attack details
+            logging.warning(f"Deauth attack detected: {src_mac} -> {dst_mac} "
+                          f"(Reason: {reason_code}, Signal: {signal_strength}dBm)")
 
-            # Update captured packets for UI
             captured_packets.append({
                 "src_mac": src_mac,
                 "dst_mac": dst_mac,
                 "reason_code": reason_code,
                 "time": attack_time,
-                "summary": f"Deauth attack detected from {src_mac} to {dst_mac} with reason code {reason_code} at {attack_time}",
-                "count": attack_counts[dst_mac]
+                "signal_strength": signal_strength,
+                "sequence": sequence,
+                "count": attack_counts[dst_mac],
+                "is_flood": is_flood
             })
-
+            
             return True
     except Exception as e:
-        logging.error(f"Error analyzing packet: {e}")
+        logging.error(f"Error processing packet: {e}")
     return False
-
 def packet_callback(packet):
     """Process packets and detect potential deauth attacks."""
     global packet_counter
@@ -79,7 +156,7 @@ def start_sniffing(interface):
 
 @app.route('/')
 def home():
-    return render_template('scapy_version.html')
+    return render_template('scapy_version_v2.html')
 
 @app.route('/packets', methods=['GET'])
 def get_packets():
@@ -152,6 +229,19 @@ def system_stats():
             "celsius": round(temp_c, 2) if temp_c is not None else "N/A",
         }
     })
+
+@app.route('/add_valid_ap', methods=['POST'])
+def add_valid_ap():
+    """Add a valid AP MAC address"""
+    mac = request.json.get("mac")
+    if mac:
+        detector.add_valid_ap(mac)
+        return jsonify({"status": "success", "message": f"Added {mac} to valid APs"})
+    return jsonify({"status": "error", "message": "No MAC address provided"})
+
+@app.route('/health-check')
+def health_check():
+    return jsonify({'status': 'ok'}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
