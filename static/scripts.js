@@ -242,7 +242,30 @@ function stopChartUpdates() {
         chartUpdateInterval = null;
     }
 }
-
+function updatePacketData(totalPackets, threats) {
+    // Shift old data points left
+    packetData.shift();
+    threatData.shift();
+    
+    // Calculate packets per second
+    const packetDiff = totalPackets - lastPacketCount;
+    const threatDiff = threats - lastThreatCount;
+    
+    // Add new data points
+    packetData.push(packetDiff);
+    threatData.push(threatDiff);
+    
+    // Update last counts
+    lastPacketCount = totalPackets;
+    lastThreatCount = threats;
+    
+    // Update packets/threats per second display
+    document.getElementById('packets-per-second').textContent = `${packetDiff} packets/sec`;
+    document.getElementById('threats-per-second').textContent = `${threatDiff} threats/sec`;
+    
+    // Update charts
+    updateChart();
+}
 // Data Refresh Functions
 async function refreshPacketData() {
     try {
