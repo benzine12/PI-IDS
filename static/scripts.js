@@ -292,33 +292,35 @@ async function refreshPacketData() {
         const packetBody = document.getElementById('packet-table-body');
         packetBody.innerHTML = '';
 
-        data.packets.forEach(packet => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-gray-50';
+// In refreshPacketData function, modify the row creation:
+data.packets.forEach(packet => {
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50';
 
-            const createCell = (content, isStatus = false) => {
-                const td = document.createElement('td');
-                td.className = `px-6 py-4 whitespace-nowrap text-sm ${isStatus ? '' : 'text-gray-500'}`;
-                td.textContent = content;
-                return td;
-            };
+    const createCell = (content, isStatus = false) => {
+        const td = document.createElement('td');
+        td.className = `px-6 py-4 whitespace-nowrap text-sm ${isStatus ? '' : 'text-gray-500'}`;
+        td.textContent = content;
+        return td;
+    };
 
-            row.appendChild(createCell(packet.src_mac));
-            row.appendChild(createCell(packet.dst_mac));
-            row.appendChild(createCell(packet.reason_code));
-            row.appendChild(createCell(packet.time));
-            row.appendChild(createCell(packet.signal_strength));
-            row.appendChild(createCell(packet.sequence));
-            row.appendChild(createCell(packet.count));
+    row.appendChild(createCell(packet.src_mac));
+    row.appendChild(createCell(packet.dst_mac));
+    row.appendChild(createCell(packet.bssid));
+    row.appendChild(createCell(packet.channel));
+    row.appendChild(createCell(packet.reason_code));
+    row.appendChild(createCell(packet.time));
+    row.appendChild(createCell(packet.signal_strength));
+    row.appendChild(createCell(packet.attack_type));
+    row.appendChild(createCell(packet.count));
 
-            const statusTd = createCell(packet.is_flood ? 'Flood Attack' : 'Detected', true);
-            statusTd.className += packet.is_flood ? ' text-red-600 font-medium' : ' text-yellow-600';
-            row.appendChild(statusTd);
+    const statusTd = createCell(packet.is_flood ? 'Flood Attack' : 'Detected', true);
+    statusTd.className += packet.is_flood ? ' text-red-600 font-medium' : ' text-yellow-600';
+    row.appendChild(statusTd);
 
-            packetBody.appendChild(row);
-        });
-        
-        // Update other metrics
+    packetBody.appendChild(row);
+});     
+
         document.getElementById('detectedThreats').textContent = data.threats || 0;
         document.getElementById('activeConnections').textContent = data.active_connections || 0;
         document.getElementById('protectedAPs').textContent = data.protected_aps || 0;

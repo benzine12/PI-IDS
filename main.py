@@ -1,5 +1,5 @@
 from flask import Flask, render_template, jsonify, request
-from scapy.all import sniff, Raw
+from scapy.all import sniff
 from scapy.layers.dot11 import Dot11, Dot11Deauth
 import threading
 import subprocess
@@ -7,31 +7,15 @@ import logging
 import psutil
 import time
 from collections import defaultdict
+from scapy.layers.dot11 import RadioTap
 
 class DeauthDetector:
     def __init__(self, window_size=5):
-        self.window_size = window_size
+        self.window_size = window_size # set how long the system will remember previous events
         self.deauth_history = defaultdict(list)
-        self.valid_aps = set()  # Add your valid AP MACs here
         
-    def add_valid_ap(self, mac):
-        self.valid_aps.add(mac)
-        
-    def is_legitimate_deauth(self, packet):
-        if not packet.haslayer(Dot11Deauth):
-            return False
-        
-        legitimate_reasons = [1, 2, 3, 4]
-        if packet[Dot11Deauth].reason not in legitimate_reasons:
-            return False
-            
-        if packet[Dot11].addr2 not in self.valid_aps:
-            return False
-            
-        return True
-        
-    def detect_pattern(self, packet):
-        if not packet.haslayer(Dot11Deauth):
+    def detect_pattern(self, packet): # detect deauth patterns
+        if not packet.haslayer(Dot11Deauth): # check if the packet is a deauth packet
             return False
             
         src = packet[Dot11].addr2
@@ -47,8 +31,6 @@ class DeauthDetector:
             avg_interval = sum(intervals) / len(intervals)
             if all(abs(i - avg_interval) < 0.1 for i in intervals):
                 return True
-                
-        return False
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
@@ -59,27 +41,8 @@ attack_log = defaultdict(list)  # Store timestamps for each target device
 attack_counts = defaultdict(int)  # Count occurrences of attacks by target
 packet_counter = 0  # Total packets processed
 
-# Add this with your other global variables
-detector = DeauthDetector()
 
-def packet_callback(packet):
-    """Enhanced packet processing"""
-    global packet_counter
-    try:
-        packet_counter += 1
-        
-        if packet.haslayer(Dot11Deauth):
-            if detector.is_legitimate_deauth(packet):
-                logging.info("Legitimate deauth detected")
-                return
-                
-            if detector.detect_pattern(packet):
-                logging.warning("Suspicious deauth pattern detected!")
-                
-            is_death_packet(packet)
-            
-    except Exception as e:
-        logging.error(f"Error in packet_callback: {e}")
+detector = DeauthDetector()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
@@ -95,90 +58,97 @@ def set_monitor_mode(interface):
         return {"status": "error", "message": str(e)}
 
 def is_death_packet(packet):
-    """Enhanced deauthentication packet detection"""
     try:
         if packet.haslayer(Dot11Deauth):
             dot11 = packet[Dot11]
             deauth = packet[Dot11Deauth]
             
-            # Get signal strength
+            # Only process if detect_pattern confirms it's likely an attack
+            if not detector.detect_pattern(packet):
+                return False
+                
             signal_strength = getattr(packet, 'dBm_AntSignal', 'N/A')
+            
+            # Get channel
+            if packet.haslayer(RadioTap):
+            # Convert frequency to channel number
+                freq = packet[RadioTap].ChannelFrequency
+                channel = (freq - 2407) // 5 if freq else 'N/A'
             
             src_mac = dot11.addr1 or "Unknown"
             dst_mac = dot11.addr2 or "Unknown"
+            bssid = packet[Dot11].addr3 if packet[Dot11].addr3 != "ff:ff:ff:ff:ff:ff" else "Unknown"
             reason_code = deauth.reason
             sequence = getattr(dot11, 'SC', 0)
             attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
             
-            # Track attack frequency
             current_time = time.time()
             attack_log[dst_mac].append(current_time)
-            
-            # Check for flood attacks
-            recent_attacks = [t for t in attack_log[dst_mac] 
-                            if current_time - t <= 1]
+            recent_attacks = [t for t in attack_log[dst_mac] if current_time - t <= 1]
             is_flood = len(recent_attacks) > 10
 
-            # Update attack counts
             attack_counts[dst_mac] += 1
             
-            # Log the attack details
             logging.warning(f"Deauth attack detected: {src_mac} -> {dst_mac} "
                           f"(Reason: {reason_code}, Signal: {signal_strength}dBm)")
 
             captured_packets.append({
                 "src_mac": src_mac,
                 "dst_mac": dst_mac,
+                "bssid": bssid,
+                "channel": channel,
                 "reason_code": reason_code,
                 "time": attack_time,
                 "signal_strength": signal_strength,
+                "attack_type": "Deauth",
                 "sequence": sequence,
                 "count": attack_counts[dst_mac],
                 "is_flood": is_flood
             })
-            
             return True
     except Exception as e:
         logging.error(f"Error processing packet: {e}")
     return False
-def packet_callback(packet):
-    """Process packets and detect potential deauth attacks."""
-    global packet_counter
-    try:
-        packet_counter += 1
-        is_death_packet(packet)
-    except Exception as e:
-        logging.error(f"Error in packet_callback: {e}")
 
 def start_sniffing(interface):
     """Start sniffing packets on the specified interface."""
-    sniff(iface=interface, prn=packet_callback, store=False)
+    sniff(iface=interface, prn=is_death_packet, store=False)
 
-@app.route('/')
+@app.get('/')
 def home():
     return render_template('scapy_version_v2.html')
 
-@app.route('/packets', methods=['GET'])
+@app.get('/packets')
 def get_packets():
     """Endpoint to get aggregated captured packets and total packet count."""
-    # Return aggregated results with counts instead of individual lines
     aggregated_results = {}
+    threats_count = len(captured_packets)  # Each captured packet is a confirmed attack
+    
     for packet in captured_packets:
         dst_mac = packet["dst_mac"]
         if dst_mac not in aggregated_results:
             aggregated_results[dst_mac] = {
                 "src_mac": packet["src_mac"],
                 "dst_mac": dst_mac,
+                "bssid": packet["bssid"],
+                "channel": packet["channel"],
                 "reason_code": packet["reason_code"],
                 "time": packet["time"],
-                "count": packet["count"]
+                "signal_strength": packet["signal_strength"],
+                "attack_type": packet["attack_type"],
+                "count": packet["count"],
+                "is_flood": packet["is_flood"]
             }
         else:
             aggregated_results[dst_mac]["count"] = attack_counts[dst_mac]
 
-    return jsonify({"packets": list(aggregated_results.values()), "total_packets": packet_counter})
+    return jsonify({
+        "packets": list(aggregated_results.values()), 
+        "total_packets": packet_counter,
+        "threats": threats_count
+    })
 
-@app.route('/start_sniffing', methods=['POST'])
+@app.post('/start_sniffing')
 def start_sniffing_endpoint():
     """Endpoint to start sniffing on the monitor interface."""
     global monitor_interface
@@ -188,7 +158,7 @@ def start_sniffing_endpoint():
     thread.start()
     return jsonify({"status": "success", "message": f"Started sniffing on {interface}"})
 
-@app.route('/set_monitor', methods=['POST'])
+@app.post('/set_monitor')
 def set_monitor():
     """Endpoint to set the interface to monitor mode."""
     global monitor_interface
@@ -197,7 +167,7 @@ def set_monitor():
     result = set_monitor_mode(interface)
     return jsonify(result)
 
-@app.route('/system-stats', methods=['GET'])
+@app.get('/system-stats')
 def system_stats():
     """Endpoint to fetch system stats."""
     memory = psutil.virtual_memory()
@@ -230,16 +200,7 @@ def system_stats():
         }
     })
 
-@app.route('/add_valid_ap', methods=['POST'])
-def add_valid_ap():
-    """Add a valid AP MAC address"""
-    mac = request.json.get("mac")
-    if mac:
-        detector.add_valid_ap(mac)
-        return jsonify({"status": "success", "message": f"Added {mac} to valid APs"})
-    return jsonify({"status": "error", "message": "No MAC address provided"})
-
-@app.route('/health-check')
+@app.get('/health-check')
 def health_check():
     return jsonify({'status': 'ok'}), 200
 
