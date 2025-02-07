@@ -102,52 +102,91 @@ function updateChart() {
 function updateSingleChart(chartId, data, type) {
     const svg = document.getElementById(chartId);
     if (!svg) return;
-
     const width = svg.clientWidth;
     const height = svg.clientHeight;
-    const padding = 20;
+    const padding = 40;
+    const labelPadding = 25;
     
     svg.innerHTML = '';
     
-    // Draw grid
-    for (let i = 0; i < 5; i++) {
-        const y = padding + (height - 2 * padding) * i / 4;
-        svg.innerHTML += `<line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" class="chart-grid"/>`;
+    // Get max value for scaling
+    const maxValue = Math.max(...data, 1);
+    const stepSize = Math.ceil(maxValue / 4);
+    
+    // Draw grid and labels
+    for (let i = 0; i <= 4; i++) {
+        const y = padding + (height - 2 * padding) * (1 - i / 4);
+        const labelValue = (stepSize * i).toFixed(0);
         
-        // Add Y-axis labels
-        const maxValue = Math.max(...data, 1);
-        const labelValue = Math.round(maxValue * (1 - (i / 4)));
+        // Add grid lines
         svg.innerHTML += `
-            <text x="${padding - 5}" y="${y}" 
-                  class="chart-label" 
-                  text-anchor="end" 
-                  alignment-baseline="middle">
-                ${labelValue}
-            </text>
+            <line 
+                x1="${padding}" 
+                y1="${y}" 
+                x2="${width - padding}" 
+                y2="${y}" 
+                class="chart-grid"
+            />
+        `;
+        
+        // Add labels with fixed width
+        svg.innerHTML += `
+            <text 
+                x="${padding - 10}" 
+                y="${y}"
+                class="chart-label"
+                text-anchor="end"
+                dominant-baseline="middle"
+                style="font-size: 12px; font-family: sans-serif;"
+            >${labelValue}</text>
         `;
     }
     
-    // Calculate points
+    // Calculate and draw points
     const points = data.map((value, index) => {
-        const x = padding + (width - 2 * padding) * index / (MAX_POINTS - 1);
-        const y = height - padding - (height - 2 * padding) * value / Math.max(...data, 1);
+        const x = padding + (width - 2 * padding) * index / (data.length - 1);
+        const y = height - padding - (height - 2 * padding) * (value / maxValue);
         return `${x},${y}`;
     }).join(' ');
     
     // Draw line
-    svg.innerHTML += `<polyline points="${points}" class="${type === 'threat' ? 'threat-line' : 'chart-line'}"/>`;
+    svg.innerHTML += `
+        <polyline 
+            points="${points}" 
+            class="${type === 'threat' ? 'threat-line' : 'chart-line'}"
+        />
+    `;
     
     // Draw points
     data.forEach((value, index) => {
-        const x = padding + (width - 2 * padding) * index / (MAX_POINTS - 1);
-        const y = height - padding - (height - 2 * padding) * value / Math.max(...data, 1);
-        svg.innerHTML += `<circle cx="${x}" cy="${y}" r="2" class="${type === 'threat' ? 'threat-point' : 'chart-point'}"/>`;
+        const x = padding + (width - 2 * padding) * index / (data.length - 1);
+        const y = height - padding - (height - 2 * padding) * (value / maxValue);
+        svg.innerHTML += `
+            <circle 
+                cx="${x}" 
+                cy="${y}" 
+                r="2" 
+                class="${type === 'threat' ? 'threat-point' : 'chart-point'}"
+            />
+        `;
     });
     
     // Draw axes
     svg.innerHTML += `
-        <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="chart-axis"/>
-        <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" class="chart-axis"/>
+        <line 
+            x1="${padding}" 
+            y1="${height - padding}" 
+            x2="${width - padding}" 
+            y2="${height - padding}" 
+            class="chart-axis"
+        />
+        <line 
+            x1="${padding}" 
+            y1="${padding}" 
+            x2="${padding}" 
+            y2="${height - padding}" 
+            class="chart-axis"
+        />
     `;
 }
 
