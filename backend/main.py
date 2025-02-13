@@ -21,6 +21,7 @@ captured_packets = []
 monitor_interface = "wlan1"
 attack_log = defaultdict(list)
 attack_counts = defaultdict(int)
+packet_counter = 0
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(message)s")
 
@@ -78,8 +79,6 @@ def is_death_packet(packet):
 @app.get('/')
 def home():
     return render_template('dashboard.html')
-
-packet_counter = 0
 
 def packet_handler(packet):
     global packet_counter
