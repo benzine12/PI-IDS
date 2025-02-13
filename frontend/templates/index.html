@@ -8,13 +8,13 @@
     <!--theme initialization script -->
     <script>
         // Check for saved theme preference, otherwise use system preference
-        const savedTheme = localStorage.getItem('theme') || 
+        const savedTheme = localStorage.getItem('theme') ||
             (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.setAttribute('data-theme', savedTheme);
     </script>
-    <link href="/static/css/tailwind.min.css" rel="stylesheet" />
-    <link href="/static/css/all.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="/static/style.css">
+    <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet" />
 </head>
 
 <body class="bg-gray-100">
@@ -285,8 +285,9 @@
                                                 <th scope="col"
                                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Destination BSSID</th>
-                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Channel</th>  
+                                                <th scope="col"
+                                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Channel</th>
                                                 <th scope="col"
                                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Reason Code</th>
@@ -319,7 +320,7 @@
             </main>
         </div>
     </div>
-    <script src="/static/scripts.js"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </body>
 
 </html>
