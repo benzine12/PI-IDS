@@ -1,42 +1,31 @@
+import os
 from flask import Flask, render_template, jsonify, request
 from scapy.all import sniff
 from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import threading, subprocess, logging, psutil, time
 from collections import defaultdict
+from module_APscan import APScanner
+from module_DeauthDetector import DeauthDetector
 
-class DeauthDetector:
-    def __init__(self, window_size=5):
-        self.window_size = window_size
-        self.deauth_history = defaultdict(list)
-        
-    def detect_pattern(self, packet):
-        if not packet.haslayer(Dot11Deauth):
-            return False
-            
-        src = packet[Dot11].addr2
-        current_time = time.time()
-        
-        self.deauth_history[src].append(current_time)
-        self.deauth_history[src] = [t for t in self.deauth_history[src] 
-                                   if current_time - t <= self.window_size]
-        
-        if len(self.deauth_history[src]) >= 3:
-            intervals = [j-i for i, j in zip(self.deauth_history[src][:-1], 
-                                           self.deauth_history[src][1:])]
-            avg_interval = sum(intervals) / len(intervals)
-            if all(abs(i - avg_interval) < 0.1 for i in intervals):
-                return True
-        return False
+# Define the base directory
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-app = Flask(__name__, static_folder='static', template_folder='templates')
+app = Flask(
+    __name__,
+    static_folder=os.path.join(BASE_DIR, 'frontend', 'static'),
+    template_folder=os.path.join(BASE_DIR, 'frontend', 'templates')
+)
+
 
 captured_packets = []
 monitor_interface = "wlan1"
 attack_log = defaultdict(list)
 attack_counts = defaultdict(int)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(message)s")
+
 detector = DeauthDetector()
+ap_scanner = APScanner()
 
 def is_death_packet(packet):
     try:
@@ -88,7 +77,7 @@ def is_death_packet(packet):
 
 @app.get('/')
 def home():
-    return render_template('index.html')
+    return render_template('dashboard.html')
 
 packet_counter = 0
 
@@ -97,6 +86,28 @@ def packet_handler(packet):
     packet_counter += 1
     if is_death_packet(packet):
         logging.info("Attack detected")
+
+    ap_scanner.process_beacon(packet)
+
+@app.get('/ap-scan')
+def ap_scan_page():
+    return render_template('ap_scan.html')
+
+@app.get('/get-aps')
+def get_aps():
+    try:
+        aps = ap_scanner.get_active_aps()
+        stats = ap_scanner.get_ap_stats()
+        return jsonify({
+            "status": "success",
+            "access_points": aps,
+            "statistics": stats
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 @app.get('/packets')
 def get_packets():
@@ -160,6 +171,7 @@ def system_stats():
     except FileNotFoundError:
         temp_c = None
     return jsonify({
+        "status": "ok",
         "memory": {
             "total": round(memory.total / (1024**3), 2),
             "used": round(memory.used / (1024**3), 2),
@@ -173,10 +185,6 @@ def system_stats():
         "cpu": {"percent": cpu},
         "temperature": {"celsius": round(temp_c, 2) if temp_c is not None else "N/A"}
     })
-
-@app.get('/health-check')
-def health_check():
-    return jsonify({'status': 'ok'}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

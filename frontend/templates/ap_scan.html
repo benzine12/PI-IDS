@@ -1,0 +1,162 @@
+<!-- templates/ap_scan.html -->
+{% extends "base.html" %}
+
+{% block title %}WIDS Dashboard - AP Monitor{% endblock %}
+
+{% block content %}
+<div id="ap-scan-tab" class="space-y-6">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">Access Point Monitor</h1>
+        <p class="text-gray-600">Monitor access points in your network</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Total APs -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total APs</p>
+                    <p id="totalAPs" class="text-2xl font-semibold mt-1">0</p>
+                </div>
+                <div class="rounded-full p-3 bg-blue-100">
+                    <i class="fas fa-wifi text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2.4GHz APs -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">2.4GHz APs</p>
+                    <p id="24ghzAPs" class="text-2xl font-semibold mt-1">0</p>
+                </div>
+                <div class="rounded-full p-3 bg-green-100">
+                    <i class="fas fa-broadcast-tower text-green-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5GHz APs -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">5GHz APs</p>
+                    <p id="5ghzAPs" class="text-2xl font-semibold mt-1">0</p>
+                </div>
+                <div class="rounded-full p-3 bg-purple-100">
+                    <i class="fas fa-broadcast-tower text-purple-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Stats -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Security Distribution</h2>
+        <div id="securityStats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Security stats will be added here dynamically -->
+        </div>
+    </div>
+
+    <!-- AP List -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Detected Access Points</h2>
+            <div class="flex items-center space-x-2">
+                <span id="lastUpdate" class="text-sm text-gray-500"></span>
+                <button onclick="updateAPList()" 
+                        class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <i class="fas fa-sync-alt mr-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">BSSID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ESSID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Band</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Channel</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Security</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Signal</th>
+                    </tr>
+                </thead>
+                <tbody id="ap-list" class="bg-white divide-y divide-gray-200">
+                    <!-- AP data will be dynamically added here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+let updateTimer;
+
+async function updateAPList() {
+    try {
+        const response = await fetch('/get-aps');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const apList = document.getElementById('ap-list');
+            const totalAPs = document.getElementById('totalAPs');
+            const band24 = document.getElementById('24ghzAPs');
+            const band5 = document.getElementById('5ghzAPs');
+            const securityStats = document.getElementById('securityStats');
+            const lastUpdate = document.getElementById('lastUpdate');
+            
+            // Update statistics
+            totalAPs.textContent = data.statistics.total_aps;
+            band24.textContent = data.statistics.bands['2.4GHz'];
+            band5.textContent = data.statistics.bands['5GHz'];
+            
+            // Update security stats
+            securityStats.innerHTML = '';
+            Object.entries(data.statistics.security).forEach(([security, count]) => {
+                const div = document.createElement('div');
+                div.className = 'bg-gray-50 p-4 rounded-lg';
+                div.innerHTML = `
+                    <p class="text-sm text-gray-500">${security}</p>
+                    <p class="text-xl font-semibold mt-1">${count}</p>
+                `;
+                securityStats.appendChild(div);
+            });
+            
+            // Update AP list
+            apList.innerHTML = '';
+            data.access_points.forEach(ap => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">${ap.bssid}</td>
+                    <td class="px-6 py-4">${ap.essid}</td>
+                    <td class="px-6 py-4">${ap.band}</td>
+                    <td class="px-6 py-4">${ap.channel}</td>
+                    <td class="px-6 py-4">${ap.crypto.join(', ')}</td>
+                    <td class="px-6 py-4">${ap.signal_strength} dBm</td>
+                `;
+                apList.appendChild(row);
+            });
+            
+            lastUpdate.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+    } catch (error) {
+        console.error('Error updating AP list:', error);
+    }
+}
+
+// Update AP list every 10 seconds
+document.addEventListener('DOMContentLoaded', () => {
+    updateAPList();
+    updateTimer = setInterval(updateAPList, 10000);
+});
+
+// Clean up timer when leaving page
+window.addEventListener('beforeunload', () => {
+    if (updateTimer) clearInterval(updateTimer);
+});
+</script>
+{% endblock %}
