@@ -1,10 +1,8 @@
 // Configuration
 const CONFIG = {
     REFRESH_INTERVAL: 2000,
-    CONNECTION_CHECK_INTERVAL: 3000,
     REQUEST_TIMEOUT: 3000,
     API_ENDPOINTS: {
-        HEALTH_CHECK: '/health-check',
         SYSTEM_STATS: '/system-stats',
         PACKETS: '/packets',
         SET_MONITOR: '/set_monitor',
@@ -29,31 +27,6 @@ function toggleTheme() {
 
 // Network Status Management
 let isServerConnected = false;
-
-async function checkServerConnection() {
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
-        
-        const response = await fetch(CONFIG.API_ENDPOINTS.HEALTH_CHECK, {
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-            updateConnectionStatus(true);
-            isServerConnected = true;
-        } else {
-            updateConnectionStatus(false);
-            isServerConnected = false;
-        }
-    } catch (error) {
-        updateConnectionStatus(false);
-        isServerConnected = false;
-        console.error('Server connection check failed:', error);
-    }
-}
 
 function updateConnectionStatus(connected) {
     const networkStatusIcon = document.getElementById('networkStatusIcon');
@@ -389,8 +362,15 @@ async function refreshSystemStats() {
         }
 
         const data = await response.json();
-        updateConnectionStatus(true);
-        isServerConnected = true;
+
+        if (data.status === 'ok') {
+            updateConnectionStatus(true);
+            isServerConnected = true;
+        } else {
+            updateConnectionStatus(false);
+            isServerConnected = false;
+            return;
+        }
 
         // Update system stats
         document.getElementById('cpuUsage').textContent = `${data.cpu.percent}%`;
@@ -404,6 +384,7 @@ async function refreshSystemStats() {
         
         document.getElementById('temperature').textContent = 
             data.temperature.celsius !== 'N/A' ? `${data.temperature.celsius}°C` : 'N/A';
+
 
     } catch (error) {
         console.error('Error refreshing system stats:', error);
@@ -429,7 +410,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize refresh intervals
     setInterval(refreshSystemStats, CONFIG.REFRESH_INTERVAL);
-    setInterval(checkServerConnection, CONFIG.CONNECTION_CHECK_INTERVAL);
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(event) {
@@ -443,7 +423,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Initial data load
-    checkServerConnection();
     refreshSystemStats();
     updateChart();  // Initialize empty chart
 });
