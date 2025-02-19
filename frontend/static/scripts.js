@@ -285,9 +285,7 @@ async function refreshSystemStats() {
             updateConnectionStatus(true);
             isServerConnected = true;
         } else {
-            updateConnectionStatus(false);
-            isServerConnected = false;
-            return;
+            throw new Error('Server returned non-ok status');
         }
 
         // Update system stats
@@ -303,12 +301,22 @@ async function refreshSystemStats() {
         document.getElementById('temperature').textContent = 
             data.temperature.celsius !== 'N/A' ? `${data.temperature.celsius}°C` : 'N/A';
 
-
     } catch (error) {
         console.error('Error refreshing system stats:', error);
-        if (!error.name === 'AbortError') {
+        // Update connection status for any error except timeout
+        if (error.name !== 'AbortError') {
             isServerConnected = false;
             updateConnectionStatus(false);
+            // Clear any existing data since we're disconnected
+            document.getElementById('cpuUsage').textContent = 'N/A';
+            document.getElementById('memoryUsage').textContent = 'N/A';
+            document.getElementById('diskUsage').textContent = 'N/A';
+            document.getElementById('temperature').textContent = 'N/A';
+            
+            // Reset progress bars
+            document.getElementById('cpuBar').style.width = '0%';
+            document.getElementById('memoryBar').style.width = '0%';
+            document.getElementById('diskBar').style.width = '0%';
         }
     }
 }
