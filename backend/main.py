@@ -29,7 +29,10 @@ app = Flask(
 )
 app.register_blueprint(views)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s",filename='logs.log', encoding='utf-8')
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s - %(message)s",
+                    filename='logs.log',
+                    encoding='utf-8')
 
 def is_death_packet(packet):
     try:
