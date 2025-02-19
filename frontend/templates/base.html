@@ -101,19 +101,8 @@
                         <button onclick="toggleSidebar()" class="p-2 rounded-md text-gray-500 hover:bg-gray-100">
                             <i class="fas fa-bars"></i>
                         </button>
-                        <div class="flex items-center space-x-3">
-                            <input type="text" id="interfaceInput" placeholder="Interface (e.g., wlan1)"
-                                class="w-32 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value="wlan1" />
-                            <button id="monitoringToggle" onclick="toggleMonitoring()"
-                                class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center space-x-2">
-                                <i class="fas fa-play"></i>
-                                <span>Start</span>
-                            </button>
-                            <span id="status-indicator"
-                                class="px-2 py-1 rounded-full text-white text-sm bg-red-500">Inactive</span>
-                        </div>
                     </div>
+                    
                     <div class="flex items-center space-x-4">
                         <!-- Network Status -->
                         <div class="hidden md:flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded-full">
@@ -183,7 +172,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="{{ url_for('static', filename='notification-system.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
 </body>
 </html>

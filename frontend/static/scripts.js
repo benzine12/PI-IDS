@@ -4,18 +4,17 @@ const CONFIG = {
     REQUEST_TIMEOUT: 3000,
     API_ENDPOINTS: {
         SYSTEM_STATS: '/system-stats',
-        PACKETS: '/packets',
-        SET_MONITOR: '/set_monitor',
-        START_SNIFFING: '/start_sniffing',
-        STOP_SNIFFING: '/stop_sniffing'
+        PACKETS: '/packets'
     }
 };
+
+// Network Status Management
+let isServerConnected = false;
 
 // Theme handling
 function setTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
-    // Trigger chart updates
     updateChart();
 }
 
@@ -24,9 +23,6 @@ function toggleTheme() {
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
 }
-
-// Network Status Management
-let isServerConnected = false;
 
 function updateConnectionStatus(connected) {
     const networkStatusIcon = document.getElementById('networkStatusIcon');
@@ -161,84 +157,6 @@ function updateSingleChart(chartId, data, type) {
             class="chart-axis"
         />
     `;
-}
-
-// Monitoring Control
-async function toggleMonitoring() {
-    const button = document.getElementById('monitoringToggle');
-    const statusIndicator = document.getElementById('status-indicator');
-    const icon = button.querySelector('i');
-    const text = button.querySelector('span');
-    const interfaceInput = document.getElementById('interfaceInput').value;
-    
-    if (text.textContent === 'Start') {
-        try {
-            // Set interface to monitor mode
-            const monitorResponse = await fetch(CONFIG.API_ENDPOINTS.SET_MONITOR, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ interface: interfaceInput })
-            });
-
-            if (!monitorResponse.ok) {
-                throw new Error('Failed to set monitor mode');
-            }
-            
-            // Start sniffing
-            const sniffResponse = await fetch(CONFIG.API_ENDPOINTS.START_SNIFFING, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ interface: interfaceInput })
-            });
-
-            if (!sniffResponse.ok) {
-                throw new Error('Failed to start sniffing');
-            }
-
-            // Update UI
-            text.textContent = 'Stop';
-            icon.classList.remove('fa-play');
-            icon.classList.add('fa-stop');
-            button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-            button.classList.add('bg-red-500', 'hover:bg-red-600');
-            statusIndicator.classList.remove('bg-red-500');
-            statusIndicator.classList.add('bg-green-500');
-            statusIndicator.textContent = 'Active';
-
-            // Start chart updates
-            startChartUpdates();
-        } catch (error) {
-            console.error('Error starting monitoring:', error);
-            alert('Failed to start monitoring. Please check the console for details.');
-        }
-    } else {
-        try {
-            // Stop sniffing
-            const response = await fetch(CONFIG.API_ENDPOINTS.STOP_SNIFFING, {
-                method: 'POST'
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to stop sniffing');
-            }
-
-            // Update UI
-            text.textContent = 'Start';
-            icon.classList.remove('fa-stop');
-            icon.classList.add('fa-play');
-            button.classList.remove('bg-red-500', 'hover:bg-red-600');
-            button.classList.add('bg-blue-500', 'hover:bg-blue-600');
-            statusIndicator.classList.remove('bg-green-500');
-            statusIndicator.classList.add('bg-red-500');
-            statusIndicator.textContent = 'Inactive';
-
-            // Stop chart updates
-            stopChartUpdates();
-        } catch (error) {
-            console.error('Error stopping monitoring:', error);
-            alert('Failed to stop monitoring. Please check the console for details.');
-        }
-    }
 }
 
 function startChartUpdates() {
