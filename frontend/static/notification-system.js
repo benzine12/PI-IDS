@@ -120,7 +120,7 @@ class NotificationSystem {
                     <p class="text-sm text-gray-800">${message}</p>
                     <p class="text-xs text-gray-500 mt-1">${new Date().toLocaleTimeString()}</p>
                 </div>
-                <button onclick="notificationSystem.dismissNavbarNotification(this.closest('.p-4'))" 
+                <button onclick="event.stopPropagation(); notificationSystem.dismissNavbarNotification(this.closest('.p-4'))" 
                         class="ml-4 text-gray-400 hover:text-gray-500">
                     <i class="fas fa-times"></i>
                 </button>
@@ -141,6 +141,17 @@ class NotificationSystem {
             this.count = Math.max(0, this.count - 1);
             this.notificationCount.textContent = this.count;
         }
+    }
+
+    clearAll() {
+        // Clear notification list
+        if (this.notificationList) {
+            this.notificationList.innerHTML = '';
+        }
+        
+        // Reset counter
+        this.count = 0;
+        this.notificationCount.textContent = '0';
     }
 }
 

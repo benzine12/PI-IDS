@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}WIDS Dashboard{% endblock %}</title>
-    
+
     <!-- Theme initialization -->
     <script>
         const savedTheme = localStorage.getItem('theme') ||
             (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.setAttribute('data-theme', savedTheme);
     </script>
-    
+
     <!-- Stylesheets -->
     <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet" />
     <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet" />
@@ -82,7 +83,7 @@
                     <i class="fas fa-home text-gray-300"></i>
                     <span class="ml-3 text-gray-300">Dashboard</span>
                 </a>
-                
+
                 <!-- AP Scanner Link -->
                 <a href="/ap-scan"
                     class="flex items-center px-4 py-3 hover:bg-gray-900 border-l-4 {% if request.endpoint == 'ap_scan_page' %}bg-gray-900 border-blue-500{% else %}border-transparent{% endif %}">
@@ -102,7 +103,7 @@
                             <i class="fas fa-bars"></i>
                         </button>
                     </div>
-                    
+
                     <div class="flex items-center space-x-4">
                         <!-- Network Status -->
                         <div class="hidden md:flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded-full">
@@ -128,8 +129,12 @@
                             </button>
                             <div id="notificationsDropdown"
                                 class="hidden absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 border border-gray-200">
-                                <div class="px-4 py-2 border-b border-gray-200">
+                                <div class="px-4 py-2 border-b border-gray-200 flex justify-between items-center">
                                     <p class="text-sm font-semibold">Notifications</p>
+                                    <button onclick="event.stopPropagation(); notificationSystem.clearAll()" 
+                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 font-medium">
+                                        Clear All
+                                    </button>
                                 </div>
                                 <div id="notificationsList" class="max-h-64 overflow-y-auto custom-scrollbar">
                                 </div>
@@ -175,4 +180,5 @@
     <script src="{{ url_for('static', filename='notification-system.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </body>
+
 </html>
