@@ -4,10 +4,6 @@ from data import attack_counts, packet_counter, ap_scanner, captured_packets
 
 views = Blueprint('views', __name__)
 
-@views.get('/ap-scan')
-def ap_scan_page():
-    return render_template('ap_scan.html')
-
 @views.get('/get-aps')
 def get_aps():
     try:
@@ -69,3 +65,7 @@ def system_stats():
 @views.get('/')
 def home():
     return render_template('dashboard.html')
+
+@views.get('/ap-scan')
+def ap_scan_page():
+    return render_template('ap_scan.html')
