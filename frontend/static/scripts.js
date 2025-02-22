@@ -252,10 +252,6 @@ data.detected_attacks.forEach(packet => {
     row.appendChild(createCell(packet.attack_type));
     row.appendChild(createCell(packet.count));
 
-    const statusTd = createCell(packet.is_flood ? 'Flood Attack' : 'Detected', true);
-    statusTd.className += packet.is_flood ? ' text-red-600 font-medium' : ' text-yellow-600';
-    row.appendChild(statusTd);
-
     packetBody.appendChild(row);
 });     
 
