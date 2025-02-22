@@ -222,7 +222,7 @@ async function refreshPacketData() {
         const packetBody = document.getElementById('packet-table-body');
         packetBody.innerHTML = '';
 
-// In refreshPacketData function, modify the row creation:
+        
 data.packets.forEach(packet => {
     const row = document.createElement('tr');
     row.className = 'hover:bg-gray-50';
@@ -336,6 +336,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize refresh intervals
     setInterval(refreshSystemStats, CONFIG.REFRESH_INTERVAL);
+    startChartUpdates();
+    refreshPacketData();
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(event) {

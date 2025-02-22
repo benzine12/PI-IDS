@@ -2,9 +2,13 @@ from collections import defaultdict
 from module_DeauthDetector import DeauthDetector
 from module_APscan import APScanner
 
-captured_packets = []
-attack_log = defaultdict(list)
-attack_counts = defaultdict(int)
-packet_counter = 0
+class StateManager:
+    def __init__(self):
+        self.packet_counter = 0
+        self.detected_attacks = []
+        self.attack_log = defaultdict(list)
+        self.attack_counts = defaultdict(int)
+
+state = StateManager()
 detector = DeauthDetector()
 ap_scanner = APScanner()

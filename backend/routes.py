@@ -1,6 +1,7 @@
+# routes.py
 from flask import Blueprint, jsonify, render_template
 import psutil
-from data import attack_counts, packet_counter, ap_scanner, captured_packets
+from data import state, ap_scanner
 
 views = Blueprint('views', __name__)
 
@@ -22,18 +23,19 @@ def get_aps():
 
 @views.get('/packets')
 def get_packets():
+    print(f"Packet count: {state.packet_counter}")
     aggregated_results = {}
-    for packet in captured_packets:
+    for packet in state.detected_attacks:
         dst_mac = packet["dst_mac"]
         if dst_mac not in aggregated_results:
             aggregated_results[dst_mac] = packet
         else:
-            aggregated_results[dst_mac]["count"] = attack_counts[dst_mac]
+            aggregated_results[dst_mac]["count"] = state.attack_counts[dst_mac]
 
     return jsonify({
         "packets": list(aggregated_results.values()),
-        "total_packets": packet_counter,
-        "threats": len(captured_packets)
+        "total_packets": state.packet_counter,
+        "threats": len(state.detected_attacks)
     })
         
 @views.get('/system-stats')

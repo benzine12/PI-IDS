@@ -6,7 +6,7 @@ from flask import Flask
 from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import logging, time
 from routes import views
-from data import attack_counts, packet_counter, ap_scanner, captured_packets, detector,attack_log
+from data import state, detector, ap_scanner
 
 # Get the first argument passed to the script
 def get_interface():
@@ -22,6 +22,9 @@ print(f"Selected Interface: {interface}")
 # Define the base directory
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
+log = logging.getLogger('werkzeug')
+log.disabled = True
+
 app = Flask(
     __name__,
     static_folder=os.path.join(BASE_DIR, 'frontend', 'static'),
@@ -29,43 +32,45 @@ app = Flask(
 )
 app.register_blueprint(views)
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.ERROR,
                     format="%(asctime)s - %(message)s",
                     filename='logs.log',
                     encoding='utf-8')
 
-def is_death_packet(packet):
+def is_deauth(packet):
     try:
         if packet.haslayer(Dot11Deauth):
             dot11 = packet[Dot11]
             deauth = packet[Dot11Deauth]
             
+            # pass the packet to detector to check if it matches the pattern
             if not detector.detect_pattern(packet):
                 return False
-                
+            
+            # get the signal strength
             signal_strength = getattr(packet, 'dBm_AntSignal', 'N/A')
             channel = 'N/A'
             
+            # get the channel from the RadioTap layer
             if packet.haslayer(RadioTap):
                 freq = packet[RadioTap].ChannelFrequency
                 channel = (freq - 2407) // 5 if freq else 'N/A'
             
-            src_mac = dot11.addr1 or "Unknown"
-            dst_mac = dot11.addr2 or "Unknown"
-            bssid = dot11.addr3 or "Unknown"
+            src_mac = dot11.addr1 or "Unknown" # the attacker
+            dst_mac = dot11.addr2 or "Unknown" # the target
+            bssid = dot11.addr3 or "Unknown" # the AP
             
             attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
             current_time = time.time()
             
-            attack_log[dst_mac].append(current_time)
-            recent_attacks = [t for t in attack_log[dst_mac] if current_time - t <= 1]
-            is_flood = len(recent_attacks) > 10
-            attack_counts[dst_mac] += 1
+            state.attack_log[dst_mac].append(current_time)
+            state.attack_counts[dst_mac] += 1
 
             logging.warning(f"Deauth attack detected: {src_mac} -> {dst_mac} "
                           f"(Reason: {deauth.reason}, Signal: {signal_strength}dBm)")
 
-            captured_packets.append({
+            # append the attack to the detected_attacks list
+            state.detected_attacks.append({
                 "src_mac": src_mac,
                 "dst_mac": dst_mac,
                 "bssid": bssid,
@@ -74,8 +79,7 @@ def is_death_packet(packet):
                 "time": attack_time,
                 "signal_strength": signal_strength,
                 "attack_type": "Deauth",
-                "count": attack_counts[dst_mac],
-                "is_flood": is_flood
+                "count": state.attack_counts[dst_mac],
             })
             return True
     except Exception as e:
@@ -83,10 +87,10 @@ def is_death_packet(packet):
     return False
 
 def packet_handler(packet):
-    global packet_counter
-    packet_counter += 1
-    if is_death_packet(packet):
-        logging.info("Attack detected")
+    state.packet_counter += 1
+
+    if is_deauth(packet):
+        logging.warning("Attack detected")
 
     ap_scanner.process_beacon(packet)
 
@@ -106,4 +110,4 @@ def start_sniffing(interface):
 
 if __name__ == '__main__':
     start_sniffing(interface)
-    app.run(host='127.0.0.1', port=5001)
+    app.run(host='0.0.0.0', port=5000, debug=True)
