@@ -23,7 +23,6 @@ def get_aps():
 
 @views.get('/packets')
 def get_packets():
-    print(f"Packet count: {state.packet_counter}")
     aggregated_results = {}
     for packet in state.detected_attacks:
         dst_mac = packet["dst_mac"]
