@@ -231,7 +231,7 @@ async function refreshPacketData() {
         packetBody.innerHTML = '';
 
         
-data.packets.forEach(packet => {
+data.detected_attacks.forEach(packet => {
     const row = document.createElement('tr');
     row.className = 'hover:bg-gray-50';
 

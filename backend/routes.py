@@ -34,7 +34,7 @@ def get_packets():
             aggregated_results[dst_mac]["count"] = state.attack_counts[dst_mac]
 
     return jsonify({
-        "packets": list(aggregated_results.values()),
+        "detected_attacks": list(aggregated_results.values()),
         "total_packets": state.packet_counter,
         "threats": len(state.detected_attacks)
     })

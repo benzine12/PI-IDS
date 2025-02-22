@@ -71,15 +71,15 @@ def is_deauth(packet):
             dst_mac = dot11.addr2 or "Unknown" # the target
             bssid = dot11.addr3 or "Unknown" # the AP
             essid = ap_scanner.detected_aps.get(bssid, {}).get("essid") or bssid or "Unknown"
-            
+            attack_type = "Deauth"
+
             attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
             current_time = time.time()
             
             state.attack_log[dst_mac].append(current_time)
             state.attack_counts[dst_mac] += 1
 
-            logging.warning(f"Deauth attack detected: {src_mac} -> {dst_mac} "
-                          f"(Reason: {deauth.reason}, Signal: {signal_strength}dBm)")
+            logging.warning(f"{attack_type} attack detected on {essid} at {attack_time}")
 
             # append the attack to the detected_attacks list
             state.detected_attacks.append({
@@ -90,7 +90,7 @@ def is_deauth(packet):
                 "reason_code": deauth.reason,
                 "time": attack_time,
                 "signal_strength": signal_strength,
-                "attack_type": "Deauth",
+                "attack_type": attack_type,
                 "count": state.attack_counts[dst_mac],
             })
             return True
@@ -102,9 +102,8 @@ def packet_handler(packet):
     """ Handle the packets received by the sniffer """
 
     state.packet_counter += 1
-    if is_deauth(packet):
-        logging.warning("Attack detected")
-
+    
+    is_deauth(packet)
     ap_scanner.process_beacon(packet)
 
 def start_sniffing(interface):

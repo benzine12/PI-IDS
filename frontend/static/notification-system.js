@@ -42,10 +42,7 @@ class NotificationSystem {
     }
 
     show(message, type = 'warning') {
-        // Show toast notification
         this.showToast(message, type);
-        
-        // Add to navbar notifications
         this.addNavbarNotification(message, type);
     }
 
@@ -110,7 +107,7 @@ class NotificationSystem {
         
         const config = this.typeConfig[type] || this.typeConfig.warning;
         
-        // Add notification content
+        // Add notification content with formatted message
         notification.innerHTML = `
             <div class="flex items-start">
                 <div class="flex-shrink-0">
@@ -155,7 +152,5 @@ class NotificationSystem {
     }
 }
 
-let notificationSystem;
-document.addEventListener('DOMContentLoaded', () => {
-    notificationSystem = new NotificationSystem();
-});
+// Initialize notification system
+const notificationSystem = new NotificationSystem();
