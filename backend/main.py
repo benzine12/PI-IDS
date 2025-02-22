@@ -16,6 +16,9 @@ def get_interface():
     else:
         print('No argument! Enter wlan interface')
         exit()
+        
+interface = get_interface()
+print(f"Selected Interface: {interface}")
 
 def to_monitor(interface):
     """ Put the interface in monitor mode """
@@ -25,8 +28,6 @@ def to_monitor(interface):
         print(f"Error putting interface in monitor mode: {e}")
         exit()
     
-interface = get_interface()
-print(f"Selected Interface: {interface}")
 
 # Define the base directory
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

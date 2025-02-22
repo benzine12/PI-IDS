@@ -236,7 +236,7 @@ data.packets.forEach(packet => {
 
     row.appendChild(createCell(packet.src_mac));
     row.appendChild(createCell(packet.dst_mac));
-    row.appendChild(createCell(packet.bssid));
+    row.appendChild(createCell(packet.essid));
     row.appendChild(createCell(packet.channel));
     row.appendChild(createCell(packet.reason_code));
     row.appendChild(createCell(packet.time));
