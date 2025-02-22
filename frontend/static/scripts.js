@@ -213,6 +213,14 @@ async function refreshPacketData() {
         }
 
         const data = await response.json();
+
+        if (data.threats > lastThreatCount) {
+            const newThreats = data.threats - lastThreatCount;
+            notificationSystem.show(
+                `Detected ${newThreats} new threat${newThreats > 1 ? 's' : ''}`,
+                'danger'
+            );
+        }
         
         // Update total packets counter and chart
         document.getElementById('totalPackets').textContent = data.total_packets;

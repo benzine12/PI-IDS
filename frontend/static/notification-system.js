@@ -155,5 +155,7 @@ class NotificationSystem {
     }
 }
 
-// Initialize notification system
-const notificationSystem = new NotificationSystem();
+let notificationSystem;
+document.addEventListener('DOMContentLoaded', () => {
+    notificationSystem = new NotificationSystem();
+});
