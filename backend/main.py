@@ -70,6 +70,7 @@ def is_deauth(packet):
             src_mac = dot11.addr1 or "Unknown" # the attacker
             dst_mac = dot11.addr2 or "Unknown" # the target
             bssid = dot11.addr3 or "Unknown" # the AP
+            essid = ap_scanner.detected_aps.get(bssid, {}).get("essid", "Unknown")
             
             attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
             current_time = time.time()
@@ -84,7 +85,7 @@ def is_deauth(packet):
             state.detected_attacks.append({
                 "src_mac": src_mac,
                 "dst_mac": dst_mac,
-                "bssid": bssid,
+                "essid": essid,
                 "channel": channel,
                 "reason_code": deauth.reason,
                 "time": attack_time,
