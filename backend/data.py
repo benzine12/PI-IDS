@@ -1,6 +1,5 @@
 from collections import defaultdict
-from modules import DeauthDetector
-from backend.modules import APScanner
+from modules import DeauthDetector, APScanner
 
 class StateManager:
     def __init__(self):

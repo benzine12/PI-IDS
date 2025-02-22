@@ -7,14 +7,22 @@ from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import logging, time
 from routes import views
 from data import state, detector, ap_scanner
+import subprocess
 
-# Get the first argument passed to the script
 def get_interface():
     """ get the itnerface from the command line arguments """
     if len(sys.argv) > 1:
         return sys.argv[1]
     else:
         print('No argument! Enter wlan interface')
+        exit()
+
+def to_monitor(interface):
+    """ Put the interface in monitor mode """
+    try:
+        subprocess.run(["sudo", "airmon-ng", "start", interface], check=True)
+    except Exception as e:
+        print(f"Error putting interface in monitor mode: {e}")
         exit()
     
 interface = get_interface()
@@ -92,7 +100,6 @@ def packet_handler(packet):
     """ Handle the packets received by the sniffer """
 
     state.packet_counter += 1
-
     if is_deauth(packet):
         logging.warning("Attack detected")
 
@@ -100,7 +107,8 @@ def packet_handler(packet):
 
 def start_sniffing(interface):
     """ Start the packet sniffing on the specified interface """
-    try:    
+    try:
+        to_monitor(interface)
         thread = threading.Thread(target=sniff, kwargs={
             'iface': interface,
             'prn': packet_handler,
