@@ -7,6 +7,7 @@ views = Blueprint('views', __name__)
 
 @views.get('/get-aps')
 def get_aps():
+    """ Get the active access points and their statistics """
     try:
         aps = ap_scanner.get_active_aps()
         stats = ap_scanner.get_ap_stats()
@@ -23,6 +24,7 @@ def get_aps():
 
 @views.get('/packets')
 def get_packets():
+    """ Get the detected packets """
     aggregated_results = {}
     for packet in state.detected_attacks:
         dst_mac = packet["dst_mac"]
@@ -39,6 +41,8 @@ def get_packets():
         
 @views.get('/system-stats')
 def system_stats():
+    """ Get the system statistics """
+
     memory = psutil.virtual_memory()
     disk = psutil.disk_usage('/')
     cpu = psutil.cpu_percent(interval=0.5)
@@ -65,8 +69,11 @@ def system_stats():
 
 @views.get('/')
 def home():
+    """ Render the home page """
     return render_template('dashboard.html')
 
 @views.get('/ap-scan')
 def ap_scan_page():
+    """ Render the access point scan page """
+    
     return render_template('ap_scan.html')

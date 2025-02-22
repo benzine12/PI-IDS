@@ -4,6 +4,7 @@ import time
 from collections import defaultdict
 
 class APScanner:
+    """Class to scan for APs and extract information from beacon frames"""
     def __init__(self):
         self.detected_aps = {}
         logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")

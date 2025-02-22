@@ -10,6 +10,7 @@ from data import state, detector, ap_scanner
 
 # Get the first argument passed to the script
 def get_interface():
+    """ get the itnerface from the command line arguments """
     if len(sys.argv) > 1:
         return sys.argv[1]
     else:
@@ -38,6 +39,7 @@ logging.basicConfig(level=logging.ERROR,
                     encoding='utf-8')
 
 def is_deauth(packet):
+    """ Check if the packet is a deauth attack and add it to the detected_attacks list """ 
     try:
         if packet.haslayer(Dot11Deauth):
             dot11 = packet[Dot11]
@@ -87,6 +89,8 @@ def is_deauth(packet):
     return False
 
 def packet_handler(packet):
+    """ Handle the packets received by the sniffer """
+
     state.packet_counter += 1
 
     if is_deauth(packet):
@@ -95,6 +99,7 @@ def packet_handler(packet):
     ap_scanner.process_beacon(packet)
 
 def start_sniffing(interface):
+    """ Start the packet sniffing on the specified interface """
     try:    
         thread = threading.Thread(target=sniff, kwargs={
             'iface': interface,

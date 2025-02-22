@@ -3,11 +3,13 @@ from scapy.layers.dot11 import Dot11, Dot11Deauth
 import time
 
 class DeauthDetector:
+    """ Class to detect deauth attacks """
     def __init__(self, window_size=5):
         self.window_size = window_size
         self.deauth_history = defaultdict(list)
         
     def detect_pattern(self, packet):
+        """ Check if the packet matches the pattern of a deauth attack """
         if not packet.haslayer(Dot11Deauth):
             return False
             
