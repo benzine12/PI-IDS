@@ -200,8 +200,41 @@ class NotificationHandler {
     constructor() {
         this.acknowledgedThreats = new Set(this.loadAcknowledgedThreats());
         this.lastThreatCount = 0;
-        this.navbarNotifications = this.loadNavbarNotifications();
         this.restoreNavbarNotifications();
+        this.setupNotificationSystem();
+    }
+
+    setupNotificationSystem() {
+        // Override the original clearAll method
+        notificationSystem.clearAll = () => {
+            // Clear the notifications list without triggering new notifications
+            const notificationsList = document.getElementById('notificationsList');
+            if (notificationsList) {
+                notificationsList.innerHTML = '';
+            }
+            
+            // Reset the counter
+            const notificationCount = document.getElementById('notificationCount');
+            if (notificationCount) {
+                notificationCount.textContent = '0';
+            }
+            notificationSystem.count = 0;
+            
+            // Clear storage
+            localStorage.removeItem('navbarNotifications');
+            localStorage.removeItem('acknowledgedThreats');
+            this.acknowledgedThreats.clear();
+        };
+
+        // Override the dismiss notification method
+        notificationSystem.dismissNavbarNotification = (element) => {
+            if (element) {
+                element.remove();
+                notificationSystem.count = Math.max(0, notificationSystem.count - 1);
+                document.getElementById('notificationCount').textContent = notificationSystem.count;
+                this.saveNavbarNotifications();
+            }
+        };
     }
 
     loadAcknowledgedThreats() {
@@ -227,11 +260,15 @@ class NotificationHandler {
     saveNavbarNotifications() {
         try {
             const notificationsList = document.getElementById('notificationsList');
+            if (!notificationsList) return;
+            
             const notifications = Array.from(notificationsList.children).map(notification => {
+                const messageEl = notification.querySelector('.text-sm.text-gray-800');
+                const timeEl = notification.querySelector('.text-xs.text-gray-500');
                 return {
-                    message: notification.querySelector('.text-sm.text-gray-800').textContent,
-                    time: notification.querySelector('.text-xs.text-gray-500').textContent,
-                    type: 'danger' // Since all threat notifications are danger type
+                    message: messageEl ? messageEl.textContent : '',
+                    time: timeEl ? timeEl.textContent : '',
+                    type: 'danger'
                 };
             });
             localStorage.setItem('navbarNotifications', JSON.stringify(notifications));
@@ -244,11 +281,11 @@ class NotificationHandler {
         const notifications = this.loadNavbarNotifications();
         const notificationsList = document.getElementById('notificationsList');
         const notificationCount = document.getElementById('notificationCount');
+        
+        if (!notificationsList || !notificationCount) return;
 
-        // Clear existing notifications
         notificationsList.innerHTML = '';
         
-        // Restore saved notifications
         notifications.forEach(notification => {
             const notificationElement = document.createElement('div');
             notificationElement.className = 'p-4 border-b border-gray-200 hover:bg-gray-50';
@@ -274,9 +311,10 @@ class NotificationHandler {
             notificationsList.appendChild(notificationElement);
         });
 
-        // Update notification count
         notificationCount.textContent = notifications.length;
-        notificationSystem.count = notifications.length;
+        if (notificationSystem) {
+            notificationSystem.count = notifications.length;
+        }
     }
 
     saveAcknowledgedThreats() {
@@ -300,48 +338,44 @@ class NotificationHandler {
             return !this.acknowledgedThreats.has(threatKey);
         });
 
-        // Show notifications for new threats
-        newThreats.forEach(threat => {
-            const threatKey = this.generateThreatKey(threat);
-            notificationSystem.show(
-                `Detected attack from ${threat.src_mac} to ${threat.dst_mac} (${threat.attack_type})`,
-                'danger'
-            );
-            this.acknowledgedThreats.add(threatKey);
-            this.saveNavbarNotifications(); // Save after adding new notification
-        });
-
-        this.saveAcknowledgedThreats();
-    }
-
-    acknowledgeAllCurrentThreats(threats) {
-        if (!Array.isArray(threats)) return;
-        
-        threats.forEach(threat => {
-            const threatKey = this.generateThreatKey(threat);
-            this.acknowledgedThreats.add(threatKey);
-        });
-        
-        this.saveAcknowledgedThreats();
-    }
-
-    clearAcknowledgedThreats() {
-        this.acknowledgedThreats.clear();
-        this.saveAcknowledgedThreats();
-        localStorage.removeItem('navbarNotifications');
+        if (newThreats.length > 0) {
+            newThreats.forEach(threat => {
+                const threatKey = this.generateThreatKey(threat);
+                notificationSystem.show(
+                    `Detected attack from ${threat.src_mac} to ${threat.dst_mac} (${threat.attack_type})`,
+                    'danger'
+                );
+                this.acknowledgedThreats.add(threatKey);
+            });
+            
+            // Save after all notifications are added
+            setTimeout(() => this.saveNavbarNotifications(), 100);
+            this.saveAcknowledgedThreats();
+        }
     }
 }
 
-// Add these modifications to the notification system
-const originalDismissNavbarNotification = notificationSystem.dismissNavbarNotification;
-notificationSystem.dismissNavbarNotification = function(element) {
-    originalDismissNavbarNotification.call(this, element);
-    notificationHandler.saveNavbarNotifications();
-};
-
 // Initialize the notification handler
 const notificationHandler = new NotificationHandler();
-
+notificationSystem.clearAll = function() {
+    // Clear the notifications list without triggering new notifications
+    const notificationsList = document.getElementById('notificationsList');
+    if (notificationsList) {
+        notificationsList.innerHTML = '';
+    }
+    
+    // Reset the counter
+    const notificationCount = document.getElementById('notificationCount');
+    if (notificationCount) {
+        notificationCount.textContent = '0';
+    }
+    this.count = 0;
+    
+    // Clear storage
+    localStorage.removeItem('navbarNotifications');
+    localStorage.removeItem('acknowledgedThreats');
+    notificationHandler.acknowledgedThreats.clear();
+};
 async function refreshPacketData() {
     try {
         const controller = new AbortController();
@@ -502,8 +536,3 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('resize', () => {
     updateChart();
 });
-const originalClearAll = notificationSystem.clearAll;
-notificationSystem.clearAll = function() {
-    originalClearAll.call(this);
-    notificationHandler.clearAcknowledgedThreats();
-};
