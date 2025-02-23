@@ -30,17 +30,18 @@ async function updateAPList() {
                 securityStats.appendChild(div);
             });
             
-            // Update AP list
+            // Update AP list with hover effect
             apList.innerHTML = '';
             data.access_points.forEach(ap => {
                 const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50'; // Add hover effect
                 row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${ap.bssid}</td>
-                    <td class="px-6 py-4">${ap.essid}</td>
-                    <td class="px-6 py-4">${ap.band}</td>
-                    <td class="px-6 py-4">${ap.channel}</td>
-                    <td class="px-6 py-4">${ap.crypto.join(', ')}</td>
-                    <td class="px-6 py-4">${ap.signal_strength} dBm</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${ap.bssid}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${ap.essid}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${ap.band}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${ap.channel}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${ap.crypto.join(', ')}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${ap.signal_strength} dBm</td>
                 `;
                 apList.appendChild(row);
             });
