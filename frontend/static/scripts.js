@@ -196,7 +196,152 @@ function updatePacketData(totalPackets, threats) {
     // Update charts
     updateChart();
 }
-// Data Refresh Functions
+class NotificationHandler {
+    constructor() {
+        this.acknowledgedThreats = new Set(this.loadAcknowledgedThreats());
+        this.lastThreatCount = 0;
+        this.navbarNotifications = this.loadNavbarNotifications();
+        this.restoreNavbarNotifications();
+    }
+
+    loadAcknowledgedThreats() {
+        try {
+            const saved = localStorage.getItem('acknowledgedThreats');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading acknowledged threats:', error);
+            return [];
+        }
+    }
+
+    loadNavbarNotifications() {
+        try {
+            const saved = localStorage.getItem('navbarNotifications');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading navbar notifications:', error);
+            return [];
+        }
+    }
+
+    saveNavbarNotifications() {
+        try {
+            const notificationsList = document.getElementById('notificationsList');
+            const notifications = Array.from(notificationsList.children).map(notification => {
+                return {
+                    message: notification.querySelector('.text-sm.text-gray-800').textContent,
+                    time: notification.querySelector('.text-xs.text-gray-500').textContent,
+                    type: 'danger' // Since all threat notifications are danger type
+                };
+            });
+            localStorage.setItem('navbarNotifications', JSON.stringify(notifications));
+        } catch (error) {
+            console.error('Error saving navbar notifications:', error);
+        }
+    }
+
+    restoreNavbarNotifications() {
+        const notifications = this.loadNavbarNotifications();
+        const notificationsList = document.getElementById('notificationsList');
+        const notificationCount = document.getElementById('notificationCount');
+
+        // Clear existing notifications
+        notificationsList.innerHTML = '';
+        
+        // Restore saved notifications
+        notifications.forEach(notification => {
+            const notificationElement = document.createElement('div');
+            notificationElement.className = 'p-4 border-b border-gray-200 hover:bg-gray-50';
+            
+            const config = notificationSystem.typeConfig[notification.type] || notificationSystem.typeConfig.warning;
+            
+            notificationElement.innerHTML = `
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas ${config.icon} ${config.color}"></i>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <p class="text-sm text-gray-800">${notification.message}</p>
+                        <p class="text-xs text-gray-500 mt-1">${notification.time}</p>
+                    </div>
+                    <button onclick="event.stopPropagation(); notificationSystem.dismissNavbarNotification(this.closest('.p-4'))" 
+                            class="ml-4 text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            notificationsList.appendChild(notificationElement);
+        });
+
+        // Update notification count
+        notificationCount.textContent = notifications.length;
+        notificationSystem.count = notifications.length;
+    }
+
+    saveAcknowledgedThreats() {
+        try {
+            localStorage.setItem('acknowledgedThreats', 
+                JSON.stringify([...this.acknowledgedThreats]));
+        } catch (error) {
+            console.error('Error saving acknowledged threats:', error);
+        }
+    }
+
+    generateThreatKey(threat) {
+        return `${threat.src_mac}-${threat.dst_mac}-${threat.attack_type}-${threat.time}`;
+    }
+
+    handleNewThreats(threats) {
+        if (!Array.isArray(threats)) return;
+
+        const newThreats = threats.filter(threat => {
+            const threatKey = this.generateThreatKey(threat);
+            return !this.acknowledgedThreats.has(threatKey);
+        });
+
+        // Show notifications for new threats
+        newThreats.forEach(threat => {
+            const threatKey = this.generateThreatKey(threat);
+            notificationSystem.show(
+                `Detected attack from ${threat.src_mac} to ${threat.dst_mac} (${threat.attack_type})`,
+                'danger'
+            );
+            this.acknowledgedThreats.add(threatKey);
+            this.saveNavbarNotifications(); // Save after adding new notification
+        });
+
+        this.saveAcknowledgedThreats();
+    }
+
+    acknowledgeAllCurrentThreats(threats) {
+        if (!Array.isArray(threats)) return;
+        
+        threats.forEach(threat => {
+            const threatKey = this.generateThreatKey(threat);
+            this.acknowledgedThreats.add(threatKey);
+        });
+        
+        this.saveAcknowledgedThreats();
+    }
+
+    clearAcknowledgedThreats() {
+        this.acknowledgedThreats.clear();
+        this.saveAcknowledgedThreats();
+        localStorage.removeItem('navbarNotifications');
+    }
+}
+
+// Add these modifications to the notification system
+const originalDismissNavbarNotification = notificationSystem.dismissNavbarNotification;
+notificationSystem.dismissNavbarNotification = function(element) {
+    originalDismissNavbarNotification.call(this, element);
+    notificationHandler.saveNavbarNotifications();
+};
+
+// Initialize the notification handler
+const notificationHandler = new NotificationHandler();
+
 async function refreshPacketData() {
     try {
         const controller = new AbortController();
@@ -213,14 +358,9 @@ async function refreshPacketData() {
         }
 
         const data = await response.json();
-
-        if (data.threats > lastThreatCount) {
-            const newThreats = data.threats - lastThreatCount;
-            notificationSystem.show(
-                `Detected ${newThreats} new threat${newThreats > 1 ? 's' : ''}`,
-                'danger'
-            );
-        }
+        
+        // Handle new threats using the notification handler
+        notificationHandler.handleNewThreats(data.detected_attacks);
         
         // Update total packets counter and chart
         document.getElementById('totalPackets').textContent = data.total_packets;
@@ -229,31 +369,30 @@ async function refreshPacketData() {
         // Update table
         const packetBody = document.getElementById('packet-table-body');
         packetBody.innerHTML = '';
-
         
-data.detected_attacks.forEach(packet => {
-    const row = document.createElement('tr');
-    row.className = 'hover:bg-gray-50';
+        data.detected_attacks.forEach(packet => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50';
 
-    const createCell = (content, isStatus = false) => {
-        const td = document.createElement('td');
-        td.className = `px-6 py-4 whitespace-nowrap text-sm ${isStatus ? '' : 'text-gray-500'}`;
-        td.textContent = content;
-        return td;
-    };
+            const createCell = (content, isStatus = false) => {
+                const td = document.createElement('td');
+                td.className = `px-6 py-4 whitespace-nowrap text-sm ${isStatus ? '' : 'text-gray-500'}`;
+                td.textContent = content;
+                return td;
+            };
 
-    row.appendChild(createCell(packet.src_mac));
-    row.appendChild(createCell(packet.dst_mac));
-    row.appendChild(createCell(packet.essid));
-    row.appendChild(createCell(packet.channel));
-    row.appendChild(createCell(packet.reason_code));
-    row.appendChild(createCell(packet.time));
-    row.appendChild(createCell(packet.signal_strength));
-    row.appendChild(createCell(packet.attack_type));
-    row.appendChild(createCell(packet.count));
+            row.appendChild(createCell(packet.src_mac));
+            row.appendChild(createCell(packet.dst_mac));
+            row.appendChild(createCell(packet.essid));
+            row.appendChild(createCell(packet.channel));
+            row.appendChild(createCell(packet.reason_code));
+            row.appendChild(createCell(packet.time));
+            row.appendChild(createCell(packet.signal_strength));
+            row.appendChild(createCell(packet.attack_type));
+            row.appendChild(createCell(packet.count));
 
-    packetBody.appendChild(row);
-});     
+            packetBody.appendChild(row);
+        });     
 
         document.getElementById('detectedThreats').textContent = data.threats || 0;
         document.getElementById('activeConnections').textContent = data.active_connections || 0;
@@ -363,3 +502,8 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('resize', () => {
     updateChart();
 });
+const originalClearAll = notificationSystem.clearAll;
+notificationSystem.clearAll = function() {
+    originalClearAll.call(this);
+    notificationHandler.clearAcknowledgedThreats();
+};

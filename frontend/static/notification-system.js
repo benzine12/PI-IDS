@@ -1,4 +1,3 @@
-// Combined Toast and Notification System
 class NotificationSystem {
     constructor() {
         // Initialize toast container
@@ -14,22 +13,29 @@ class NotificationSystem {
         this.notificationCount = document.getElementById('notificationCount');
         this.count = 0;
         
+        // Add notification cache and rate limiting
+        this.notificationCache = new Map();
+        this.rateLimits = new Map();
+        
         // Configure notification types
         this.typeConfig = {
             warning: {
                 icon: 'fa-exclamation-triangle',
                 color: 'text-yellow-500',
-                bgColor: 'text-yellow-800 bg-yellow-100 dark:bg-yellow-800 dark:text-yellow-100'
+                bgColor: 'text-yellow-800 bg-yellow-100 dark:bg-yellow-800 dark:text-yellow-100',
+                rateLimit: 5000  // 5 seconds between similar warnings
             },
             danger: {
                 icon: 'fa-shield-alt',
                 color: 'text-red-500',
-                bgColor: 'text-red-800 bg-red-100 dark:bg-red-800 dark:text-red-100'
+                bgColor: 'text-red-800 bg-red-100 dark:bg-red-800 dark:text-red-100',
+                rateLimit: 10000  // 10 seconds between similar danger alerts
             },
             success: {
                 icon: 'fa-check-circle',
                 color: 'text-green-500',
-                bgColor: 'text-green-800 bg-green-100 dark:bg-green-800 dark:text-green-100'
+                bgColor: 'text-green-800 bg-green-100 dark:bg-green-800 dark:text-green-100',
+                rateLimit: 3000  // 3 seconds between similar success messages
             }
         };
     }
@@ -41,15 +47,89 @@ class NotificationSystem {
         return container;
     }
 
+    shouldThrottleNotification(message, type) {
+        const key = `${type}:${message}`;
+        const now = Date.now();
+        const lastShown = this.rateLimits.get(key) || 0;
+        const rateLimit = this.typeConfig[type]?.rateLimit || 5000;
+
+        if (now - lastShown < rateLimit) {
+            return true;
+        }
+
+        this.rateLimits.set(key, now);
+        return false;
+    }
+
+    isDuplicateNotification(message, type) {
+        const key = `${type}:${message}`;
+        const existing = this.notificationCache.get(key);
+        
+        if (existing) {
+            const timeSinceLastShown = Date.now() - existing.timestamp;
+            // If the same notification was shown in the last 5 seconds
+            if (timeSinceLastShown < 5000) {
+                // Update count if it's a duplicate
+                existing.count++;
+                existing.timestamp = Date.now();
+                // Update the existing notification text if it's still visible
+                const existingToast = document.getElementById(existing.id);
+                if (existingToast) {
+                    const messageDiv = existingToast.querySelector('.text-sm');
+                    messageDiv.textContent = `${message} (${existing.count}x)`;
+                    return true;
+                }
+            }
+        }
+        
+        // Add new notification to cache
+        this.notificationCache.set(key, {
+            id: `toast-${Date.now()}`,
+            timestamp: Date.now(),
+            count: 1
+        });
+        
+        return false;
+    }
+
     show(message, type = 'warning') {
+        // Check rate limiting and deduplication
+        if (this.shouldThrottleNotification(message, type) || 
+            this.isDuplicateNotification(message, type)) {
+            return;
+        }
+
         this.showToast(message, type);
         this.addNavbarNotification(message, type);
+        
+        // Clean up old cache entries
+        this.cleanupCache();
+    }
+
+    cleanupCache() {
+        const now = Date.now();
+        // Clean up entries older than 1 minute
+        for (const [key, value] of this.notificationCache) {
+            if (now - value.timestamp > 60000) {
+                this.notificationCache.delete(key);
+            }
+        }
+        
+        // Clean up rate limit entries
+        for (const [key, timestamp] of this.rateLimits) {
+            if (now - timestamp > 60000) {
+                this.rateLimits.delete(key);
+            }
+        }
     }
 
     showToast(message, type = 'warning') {
+        const cacheKey = `${type}:${message}`;
+        const cacheEntry = this.notificationCache.get(cacheKey);
+        const toastId = cacheEntry ? cacheEntry.id : `toast-${Date.now()}`;
+        
         const toast = document.createElement('div');
-        const id = `toast-${Date.now()}`;
-        toast.id = id;
+        toast.id = toastId;
         
         const config = this.typeConfig[type] || this.typeConfig.warning;
         
@@ -57,12 +137,14 @@ class NotificationSystem {
         const baseClasses = 'flex items-center w-full max-w-sm p-2 mb-2 rounded-lg shadow transition-all duration-300 ease-in-out transform translate-x-0';
         
         toast.className = `${baseClasses} ${config.bgColor}`;
+        
+        const count = cacheEntry?.count > 1 ? ` (${cacheEntry.count}x)` : '';
         toast.innerHTML = `
             <i class="fas ${config.icon} mr-2 text-sm"></i>
-            <div class="text-sm font-normal">${message}</div>
+            <div class="text-sm font-normal">${message}${count}</div>
             <button type="button" 
                     class="ml-auto -mx-1 -my-1 rounded-lg focus:ring-2 focus:ring-gray-300 p-1 inline-flex h-6 w-6 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    onclick="notificationSystem.dismissToast('${id}')">
+                    onclick="notificationSystem.dismissToast('${toastId}')">
                 <i class="fas fa-times text-sm"></i>
             </button>
         `;
@@ -80,10 +162,11 @@ class NotificationSystem {
 
         // Auto dismiss after 5 seconds
         setTimeout(() => {
-            this.dismissToast(id);
+            this.dismissToast(toastId);
         }, 5000);
     }
 
+    // Rest of the methods remain the same
     dismissToast(id) {
         const toast = document.getElementById(id);
         if (toast) {
@@ -97,24 +180,28 @@ class NotificationSystem {
     }
 
     addNavbarNotification(message, type = 'warning') {
-        // Increment counter
-        this.count++;
-        this.notificationCount.textContent = this.count;
+        // Only increment counter for non-duplicate notifications
+        const key = `${type}:${message}`;
+        const existing = this.notificationCache.get(key);
+        if (!existing || existing.count === 1) {
+            this.count++;
+            this.notificationCount.textContent = this.count;
+        }
         
         // Create notification element
         const notification = document.createElement('div');
         notification.className = 'p-4 border-b border-gray-200 hover:bg-gray-50';
         
         const config = this.typeConfig[type] || this.typeConfig.warning;
+        const count = existing?.count > 1 ? ` (${existing.count}x)` : '';
         
-        // Add notification content with formatted message
         notification.innerHTML = `
             <div class="flex items-start">
                 <div class="flex-shrink-0">
                     <i class="fas ${config.icon} ${config.color}"></i>
                 </div>
                 <div class="ml-3 flex-1">
-                    <p class="text-sm text-gray-800">${message}</p>
+                    <p class="text-sm text-gray-800">${message}${count}</p>
                     <p class="text-xs text-gray-500 mt-1">${new Date().toLocaleTimeString()}</p>
                 </div>
                 <button onclick="event.stopPropagation(); notificationSystem.dismissNavbarNotification(this.closest('.p-4'))" 
@@ -146,9 +233,11 @@ class NotificationSystem {
             this.notificationList.innerHTML = '';
         }
         
-        // Reset counter
+        // Reset counter and caches
         this.count = 0;
         this.notificationCount.textContent = '0';
+        this.notificationCache.clear();
+        this.rateLimits.clear();
     }
 }
 
