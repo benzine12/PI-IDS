@@ -9,6 +9,23 @@ from routes import views
 from data import state, detector, ap_scanner
 import subprocess
 
+# Define the base directory
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+app = Flask(
+    __name__,
+    static_folder=os.path.join(BASE_DIR, 'frontend', 'static'),
+    template_folder=os.path.join(BASE_DIR, 'frontend', 'templates')
+)
+app.register_blueprint(views)
+
+log = logging.getLogger('werkzeug')
+log.disabled = True
+logging.basicConfig(level=logging.ERROR,
+                    format="%(asctime)s - %(message)s",
+                    filename='logs.log',
+                    encoding='utf-8')
+
+
 def get_interface():
     """ get the itnerface from the command line arguments """
     if len(sys.argv) > 1:
@@ -27,25 +44,6 @@ def to_monitor(interface):
     except Exception as e:
         print(f"Error putting interface in monitor mode: {e}")
         exit()
-    
-
-# Define the base directory
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-log = logging.getLogger('werkzeug')
-log.disabled = True
-
-app = Flask(
-    __name__,
-    static_folder=os.path.join(BASE_DIR, 'frontend', 'static'),
-    template_folder=os.path.join(BASE_DIR, 'frontend', 'templates')
-)
-app.register_blueprint(views)
-
-logging.basicConfig(level=logging.ERROR,
-                    format="%(asctime)s - %(message)s",
-                    filename='logs.log',
-                    encoding='utf-8')
 
 def is_deauth(packet):
     """ Check if the packet is a deauth attack and add it to the detected_attacks list """ 

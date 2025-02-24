@@ -1,5 +1,6 @@
 from collections import defaultdict
 from modules import DeauthDetector, APScanner
+from flask_sqlalchemy import SQLAlchemy
 
 class StateManager:
     def __init__(self):
@@ -11,3 +12,4 @@ class StateManager:
 state = StateManager()
 detector = DeauthDetector()
 ap_scanner = APScanner()
+DB = SQLAlchemy()
