@@ -4,7 +4,7 @@ async function updateAPList() {
     try {
         const response = await fetch('/get-aps');
         const data = await response.json();
-        
+
         if (data.status === 'success') {
             const apList = document.getElementById('ap-list');
             const totalAPs = document.getElementById('totalAPs');
@@ -12,12 +12,12 @@ async function updateAPList() {
             const band5 = document.getElementById('5ghzAPs');
             const securityStats = document.getElementById('securityStats');
             const lastUpdate = document.getElementById('lastUpdate');
-            
+
             // Update statistics
             totalAPs.textContent = data.statistics.total_aps;
             band24.textContent = data.statistics.bands['2.4GHz'];
             band5.textContent = data.statistics.bands['5GHz'];
-            
+
             // Update security stats
             securityStats.innerHTML = '';
             Object.entries(data.statistics.security).forEach(([security, count]) => {
@@ -29,15 +29,16 @@ async function updateAPList() {
                 `;
                 securityStats.appendChild(div);
             });
-            
+
             // Update AP list with hover effect
             apList.innerHTML = '';
             data.access_points.forEach(ap => {
                 const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50'; // Add hover effect
+                row.className = 'hover:bg-gray-50';
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${ap.bssid}</td>
-                    <td class="px-6 py-4 text-sm text-gray-500">${ap.essid}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                    ${ap.essid.length > 15 ? ap.essid.substring(0, 15) + "..." : ap.essid}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${ap.band}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${ap.channel}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${ap.crypto.join(', ')}</td>
@@ -45,7 +46,7 @@ async function updateAPList() {
                 `;
                 apList.appendChild(row);
             });
-            
+
             lastUpdate.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
         }
     } catch (error) {
