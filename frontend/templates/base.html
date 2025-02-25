@@ -8,6 +8,13 @@
 
     <!-- Theme initialization -->
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const token = localStorage.getItem('accessToken');
+            if (!token) {
+                window.location.href = '/';  // Redirect to login page
+                return;
+            }
+        })
         const savedTheme = localStorage.getItem('theme') ||
             (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -78,7 +85,7 @@
             <!-- Navigation -->
             <nav class="mt-4">
                 <!-- Dashboard Link -->
-                <a href="/"
+                <a href="/dashboard"
                     class="flex items-center px-4 py-3 hover:bg-gray-900 border-l-4 {% if request.endpoint == 'home' %}bg-gray-900 border-blue-500{% else %}border-transparent{% endif %}">
                     <i class="fas fa-home text-gray-300"></i>
                     <span class="ml-3 text-gray-300">Dashboard</span>
@@ -131,7 +138,7 @@
                                 class="hidden absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 border border-gray-200">
                                 <div class="px-4 py-2 border-b border-gray-200 flex justify-between items-center">
                                     <p class="text-sm font-semibold">Notifications</p>
-                                    <button onclick="event.stopPropagation(); notificationSystem.clearAll()" 
+                                    <button onclick="event.stopPropagation(); notificationSystem.clearAll()"
                                         class="px-2 py-1 text-xs text-red-600 hover:text-red-800 font-medium">
                                         Clear All
                                     </button>
@@ -153,13 +160,11 @@
                             <div id="userMenuDropdown"
                                 class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200">
                                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-user mr-2"></i> Profile
-                                </a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     <i class="fas fa-cog mr-2"></i> Settings
                                 </a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-sign-out-alt mr-2"></i> Sign out
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    id="signOutBtn">
+                                    <i id="signOutBtn" class="fas fa-sign-out-alt mr-2"></i> Sign out
                                 </a>
                             </div>
                         </div>

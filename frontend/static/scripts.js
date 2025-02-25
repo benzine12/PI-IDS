@@ -8,6 +8,14 @@ const CONFIG = {
     }
 };
 
+function getAuthHeaders() {
+    const token = localStorage.getItem('accessToken');
+    return {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json'
+    };
+}
+
 // Network Status Management
 let isServerConnected = false;
 
@@ -225,7 +233,11 @@ class NotificationHandler {
             localStorage.removeItem('acknowledgedThreats');
             this.acknowledgedThreats.clear();
         };
-
+        document.getElementById('signOutBtn').addEventListener("click", function(event) {
+            event.preventDefault();
+            localStorage.removeItem('accessToken');
+            window.location.href = '/';
+        });
         // Override the dismiss notification method
         notificationSystem.dismissNavbarNotification = (element) => {
             if (element) {
@@ -382,7 +394,8 @@ async function refreshPacketData() {
         const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
         
         const response = await fetch(CONFIG.API_ENDPOINTS.PACKETS, {
-            signal: controller.signal
+            signal: controller.signal,
+            headers: getAuthHeaders()
         });
         
         clearTimeout(timeoutId);
@@ -447,7 +460,8 @@ async function refreshSystemStats() {
         const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
         
         const response = await fetch(CONFIG.API_ENDPOINTS.SYSTEM_STATS, {
-            signal: controller.signal
+            signal: controller.signal,
+            headers: getAuthHeaders()
         });
         
         clearTimeout(timeoutId);

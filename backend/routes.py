@@ -1,11 +1,29 @@
 # routes.py
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, request
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 import psutil
-from data import state, ap_scanner
+from models import User
+from data import DB, state, ap_scanner,bcrypt
 
 views = Blueprint('views', __name__)
 
+@views.route('/')
+def login_page():
+    """ Render the login page """
+    return render_template('login.html') 
+
+@views.get('/dashboard')
+def dashboard_page():
+    """ Render the home page """
+    return render_template('dashboard.html')
+
+@views.get('/ap-scan')
+def ap_scan_page():
+    """ Render the access point scan page """
+    return render_template('ap_scan.html')
+
 @views.get('/get-aps')
+@jwt_required()
 def get_aps():
     """ Get the active access points and their statistics """
     try:
@@ -23,6 +41,7 @@ def get_aps():
         }), 500
 
 @views.get('/packets')
+@jwt_required()
 def get_packets():
     """ Get the detected packets """
     aggregated_results = {}
@@ -40,6 +59,7 @@ def get_packets():
     })
         
 @views.get('/system-stats')
+@jwt_required()
 def system_stats():
     """ Get the system statistics """
 
@@ -66,14 +86,31 @@ def system_stats():
         "cpu": {"percent": cpu},
         "temperature": {"celsius": round(temp_c, 2) if temp_c is not None else "N/A"}
     })
+   
+#login func
+@views.post('/login')
+# @func_logger
+def login():
+    if request.method == 'POST':
+        if not request.is_json:
+            return jsonify({"msg": "Missing or invalid JSON in request",
+                            "error": "Bad request"}), 400
 
-@views.get('/')
-def home():
-    """ Render the home page """
-    return render_template('dashboard.html')
+        username = request.json.get('username', None)
+        password = request.json.get('password', None)
 
-@views.get('/ap-scan')
-def ap_scan_page():
-    """ Render the access point scan page """
-    
-    return render_template('ap_scan.html')
+        if not username or not password:
+            return jsonify({"msg": "Username and password are required",
+                            "error": "Bad request"}), 400
+
+        user = User.query.filter_by(username=username).first()
+
+        if user and bcrypt.check_password_hash(user.password, password):
+            access_token = create_access_token(identity=str(user.id))
+            # refresh_token = create_refresh_token(identity=username)
+            print(access_token)
+            return jsonify({"msg": "Welcome back, commander!",
+                        "access_token": access_token}), 200
+
+        return jsonify({"msg": "Invalid username or password",
+                        "error": "Something went wrong"}), 401

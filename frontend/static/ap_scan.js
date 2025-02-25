@@ -1,8 +1,19 @@
 let updateTimer;
 
+function getAuthHeaders() {
+    const token = localStorage.getItem('accessToken');
+    return {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json'
+    };
+}
+
 async function updateAPList() {
     try {
-        const response = await fetch('/get-aps');
+        const response = await fetch('/get-aps',{
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json'
+        });
         const data = await response.json();
 
         if (data.status === 'success') {
@@ -43,7 +54,8 @@ async function updateAPList() {
                     <td class="px-6 py-4 text-sm text-gray-500">${ap.channel}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${ap.crypto.join(', ')}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${ap.signal_strength} dBm</td>
-                `;
+                    <td class="px-6 py-4 text-sm text-gray-500">${ap.connected_devices} dBm</td>
+                    `;
                 apList.appendChild(row);
             });
 

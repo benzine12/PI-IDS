@@ -1,44 +1,58 @@
 import os
 import sys
 import threading
+from datetime import timedelta
+from flask_cors import CORS
 from scapy.all import sniff
 from flask import Flask
 from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import logging, time
 from routes import views
-from data import state, detector, ap_scanner
+from data import state, detector, ap_scanner, BASE_DIR, DB, bcrypt, jwt
+from models import User
 import subprocess
 
-# Define the base directory
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-app = Flask(
-    __name__,
-    static_folder=os.path.join(BASE_DIR, 'frontend', 'static'),
-    template_folder=os.path.join(BASE_DIR, 'frontend', 'templates')
-)
-app.register_blueprint(views)
+def create_app():
+    """Create and configure the Flask application"""
+    app = Flask(
+        __name__,
+        static_folder=os.path.join(BASE_DIR, 'frontend', 'static'),
+        template_folder=os.path.join(BASE_DIR, 'frontend', 'templates')
+    )
+    
+    # Configure the application
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wids.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # JWT Configuration
+    app.config['JWT_SECRET_KEY'] = 'your_secret_key_here'
+    app.config['JWT_ALGORITHM'] = "HS256"
+    app.config['JWT_TOKEN_LOCATION'] = ["headers"]
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+    app.config['JWT_HEADER_TYPE'] = "Bearer"
+    app.config['JWT_HEADER_NAME'] = "Authorization"
 
-log = logging.getLogger('werkzeug')
-log.disabled = True
-logging.basicConfig(level=logging.ERROR,
-                    format="%(asctime)s - %(message)s",
-                    filename='logs.log',
-                    encoding='utf-8')
-
+    # Initialize extensions
+    CORS(app)
+    DB.init_app(app)
+    bcrypt.init_app(app)
+    jwt.init_app(app)
+    
+    # Register blueprints
+    app.register_blueprint(views)
+    
+    return app
 
 def get_interface():
-    """ get the itnerface from the command line arguments """
+    """Get the interface from the command line arguments"""
     if len(sys.argv) > 1:
         return sys.argv[1]
     else:
         print('No argument! Enter wlan interface')
         exit()
-        
-interface = get_interface()
-print(f"Selected Interface: {interface}")
 
 def to_monitor(interface):
-    """ Put the interface in monitor mode """
+    """Put the interface in monitor mode"""
     try:
         subprocess.run(["sudo", "airmon-ng", "start", interface], check=True)
     except Exception as e:
@@ -46,7 +60,7 @@ def to_monitor(interface):
         exit()
 
 def is_deauth(packet):
-    """ Check if the packet is a deauth attack and add it to the detected_attacks list """ 
+    """Check if the packet is a deauth attack and add it to the detected_attacks list"""
     try:
         if packet.haslayer(Dot11Deauth):
             dot11 = packet[Dot11]
@@ -97,15 +111,13 @@ def is_deauth(packet):
     return False
 
 def packet_handler(packet):
-    """ Handle the packets received by the sniffer """
-
+    """Handle the packets received by the sniffer"""
     state.packet_counter += 1
-    
     is_deauth(packet)
     ap_scanner.process_beacon(packet)
 
 def start_sniffing(interface):
-    """ Start the packet sniffing on the specified interface """
+    """Start the packet sniffing on the specified interface"""
     try:
         to_monitor(interface)
         thread = threading.Thread(target=sniff, kwargs={
@@ -121,5 +133,21 @@ def start_sniffing(interface):
         print(f"Error starting sniffing: {e}")
 
 if __name__ == '__main__':
-    start_sniffing(interface)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    interface = get_interface()
+    print(f"Selected Interface: {interface}")
+    
+    app = create_app()
+    with app.app_context():
+        DB.create_all()
+    
+    # Configure logging
+    logging.basicConfig(level=logging.ERROR,
+                       format="%(asctime)s - %(message)s",
+                       filename='logs.log',
+                       encoding='utf-8')
+    
+    log = logging.getLogger('werkzeug')
+    log.disabled = True
+    
+    # start_sniffing(interface)
+    app.run(host='0.0.0.0', port=5001, debug=True)
