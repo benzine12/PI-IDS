@@ -1,7 +1,7 @@
 let updateTimer;
+let token = localStorage.getItem('accessToken');
 
 function getAuthHeaders() {
-    const token = localStorage.getItem('accessToken');
     return {
         'Authorization': token ? `Bearer ${token}` : '',
         'Content-Type': 'application/json'
@@ -11,8 +11,7 @@ function getAuthHeaders() {
 async function updateAPList() {
     try {
         const response = await fetch('/get-aps',{
-            'Authorization': token ? `Bearer ${token}` : '',
-            'Content-Type': 'application/json'
+            headers: getAuthHeaders()
         });
         const data = await response.json();
 

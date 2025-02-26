@@ -108,7 +108,6 @@ def login():
         if user and bcrypt.check_password_hash(user.password, password):
             access_token = create_access_token(identity=str(user.id))
             # refresh_token = create_refresh_token(identity=username)
-            print(access_token)
             return jsonify({"msg": "Welcome back, commander!",
                         "access_token": access_token}), 200
 
