@@ -1,9 +1,10 @@
 # routes.py
 from flask import Blueprint, jsonify, render_template, request
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, jwt_required
 import psutil
 from models import User
-from data import DB, state, ap_scanner,bcrypt
+from data import state,bcrypt
+from modules import ap_scanner
 
 views = Blueprint('views', __name__)
 

@@ -8,8 +8,8 @@ from flask import Flask
 from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import logging, time
 from routes import views
-from data import state, detector, ap_scanner, BASE_DIR, DB, bcrypt, jwt
-from models import User
+from data import state, BASE_DIR, DB, bcrypt, jwt
+from modules import detector, ap_scanner 
 import subprocess
 
 def create_app():

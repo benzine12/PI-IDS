@@ -235,7 +235,8 @@ class NotificationHandler {
         };
         document.getElementById('signOutBtn').addEventListener("click", function(event) {
             event.preventDefault();
-            localStorage.removeItem('accessToken');
+            localStorage.clear();
+
             window.location.href = '/';
         });
         // Override the dismiss notification method

@@ -2,7 +2,6 @@
 from collections import defaultdict
 import os
 from flask_jwt_extended import JWTManager
-from modules import DeauthDetector, APScanner
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 
@@ -23,5 +22,3 @@ jwt = JWTManager()
 
 # Initialize application state
 state = StateManager()
-detector = DeauthDetector()
-ap_scanner = APScanner()

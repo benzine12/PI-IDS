@@ -29,7 +29,10 @@ class DeauthDetector:
                 return True
         return False
 
+detector = DeauthDetector()
+
 class APScanner:
+
     """Class to scan for APs and extract information from beacon frames"""
     def __init__(self):
         self.detected_aps = {}
@@ -96,3 +99,14 @@ class APScanner:
             "bands": bands_count,
             "security": dict(security_count)
         }
+
+    def check_for_rogue_ap(self):
+        # if the bssid or essid the same as the as one of the list
+        # and the crypto is OPEN 
+        # and the signal strenght is not the same
+        # its rogue ap
+        pass
+
+
+ap_scanner = APScanner()
+
