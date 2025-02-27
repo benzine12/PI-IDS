@@ -292,4 +292,4 @@ class NotificationSystem {
 }
 
 // Initialize notification system
-const notificationSystem = new NotificationSystem();
+const notificationSystem = new NotificationSystem()

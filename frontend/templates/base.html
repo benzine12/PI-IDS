@@ -8,13 +8,6 @@
 
     <!-- Theme initialization -->
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const token = localStorage.getItem('accessToken');
-            if (!token) {
-                window.location.href = '/';  // Redirect to login page
-                return;
-            }
-        })
         const savedTheme = localStorage.getItem('theme') ||
             (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.setAttribute('data-theme', savedTheme);

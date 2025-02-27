@@ -1,6 +1,6 @@
 # routes.py
-from flask import Blueprint, jsonify, render_template, request
-from flask_jwt_extended import create_access_token, jwt_required
+from flask import Blueprint, jsonify, redirect, render_template, request
+from flask_jwt_extended import create_access_token, jwt_required, verify_jwt_in_request
 import psutil
 from models import User
 from data import state,bcrypt
@@ -13,15 +13,23 @@ def login_page():
     """ Render the login page """
     return render_template('login.html') 
 
-@views.get('/dashboard')
-def dashboard_page():
-    """ Render the home page """
-    return render_template('dashboard.html')
+@views.route('/dashboard')
+def dashboard():
+    """Render the dashboard page with server-side JWT verification"""
+    try:
+        verify_jwt_in_request()
+        return render_template('dashboard.html')
+    except Exception:
+        return redirect('/')
 
-@views.get('/ap-scan')
-def ap_scan_page():
-    """ Render the access point scan page """
-    return render_template('ap_scan.html')
+@views.route('/ap-scan')
+def ap_scan():
+    """Render the ap-scan page with server-side JWT verification"""
+    try:
+        verify_jwt_in_request()
+        return render_template('ap-scan.html')
+    except Exception:
+        return redirect('/')
 
 @views.get('/get-aps')
 @jwt_required()

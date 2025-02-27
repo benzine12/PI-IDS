@@ -107,6 +107,5 @@ class APScanner:
         # its rogue ap
         pass
 
-
 ap_scanner = APScanner()
 

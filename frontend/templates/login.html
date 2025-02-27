@@ -1,109 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WIDS - Login</title>
 
-    <!-- Theme initialization -->
-    <script>
-        const savedTheme = localStorage.getItem('theme') ||
-            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        document.documentElement.setAttribute('data-theme', savedTheme);
-    </script>
-
     <!-- Stylesheets -->
-    <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet" />
-    <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet" />
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet" />
-</head>
+    <link
+      href="{{ url_for('static', filename='css/tailwind.min.css') }}"
+      rel="stylesheet"
+    />
+    <link
+      href="{{ url_for('static', filename='css/all.min.css') }}"
+      rel="stylesheet"
+    />
+    <link
+      href="{{ url_for('static', filename='css/style.css') }}"
+      rel="stylesheet"
+    />
+  </head>
 
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <body class="bg-gray-100 flex items-center justify-center min-h-screen">
     <div class="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
-        <div class="flex justify-center mb-8">
-            <div class="flex items-center">
-                <i class="fas fa-shield-alt text-blue-500 text-4xl"></i>
-                <h1 class="text-2xl font-bold ml-2">WIDS Admin</h1>
-            </div>
+      <div class="flex justify-center mb-8">
+        <div class="flex items-center">
+          <i class="fas fa-shield-alt text-blue-500 text-4xl"></i>
+          <h1 class="text-2xl font-bold ml-2">WIDS Admin</h1>
+        </div>
+      </div>
+
+      <div id="login-form" class="block">
+        <h2 class="text-xl font-semibold mb-6 text-center">
+          Login to your account
+        </h2>
+        <div
+          id="login-error"
+          class="hidden mb-4 p-3 bg-red-100 text-red-700 rounded-md"
+        ></div>
+
+        <div class="mb-4">
+          <label
+            for="login-username"
+            class="block text-gray-700 text-sm font-bold mb-2"
+            >Username</label
+          >
+          <input
+            type="text"
+            id="login-username"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            placeholder="Enter your username"
+          />
         </div>
 
-        <div id="login-form" class="block">
-            <h2 class="text-xl font-semibold mb-6 text-center">Login to your account</h2>
-            <div id="login-error" class="hidden mb-4 p-3 bg-red-100 text-red-700 rounded-md"></div>
-
-            <div class="mb-4">
-                <label for="login-username" class="block text-gray-700 text-sm font-bold mb-2">Username</label>
-                <input type="text" id="login-username"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Enter your username">
-            </div>
-
-            <div class="mb-6">
-                <label for="login-password" class="block text-gray-700 text-sm font-bold mb-2">Password</label>
-                <input type="password" id="login-password"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Enter your password">
-            </div>
-
-            <div class="flex items-center justify-between">
-                <button id="login-btn"
-                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full">
-                    Sign In
-                </button>
-            </div>
+        <div class="mb-6">
+          <label
+            for="login-password"
+            class="block text-gray-700 text-sm font-bold mb-2"
+            >Password</label
+          >
+          <input
+            type="password"
+            id="login-password"
+            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            placeholder="Enter your password"
+          />
         </div>
+
+        <div class="flex items-center justify-between">
+          <button
+            id="login-btn"
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
     </div>
-
-    <script>
-        // Login function
-        document.getElementById('login-btn').addEventListener('click', async function () {
-            const username = document.getElementById('login-username').value;
-            const password = document.getElementById('login-password').value;
-            const errorElement = document.getElementById('login-error');
-
-            errorElement.classList.add('hidden');
-
-            try {
-                const response = await fetch('/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username, password })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Check if access_token exists in the response
-                    if (!data.access_token) {
-                        console.error("No access token in response:", data);
-                        errorElement.textContent = "Authentication error: No token received";
-                        errorElement.classList.remove('hidden');
-                        return;
-                    }
-
-                    // Store the token in localStorage
-                    localStorage.setItem('accessToken', data.access_token);
-                    console.log(localStorage.getItem('accessToken'));
-                    console.log("Token saved to localStorage, length:", data.access_token.length);
-
-                    setTimeout(() => {
-                        window.location.replace("/dashboard");
-                    }, 1000);
-
-                } else {
-                    errorElement.textContent = data.msg || "Login failed";
-                    errorElement.classList.remove('hidden');
-                }
-            } catch (error) {
-                errorElement.textContent = 'An error occurred. Please try again.';
-                errorElement.classList.remove('hidden');
-                console.error('Login error:', error);
-            }
-        });
-    </script>
-</body>
-
+    <script src="{{ url_for('static', filename='login.js') }}"></script>
+  </body>
 </html>
