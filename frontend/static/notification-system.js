@@ -1,4 +1,5 @@
-// notification-system.js
+// notification-system.js - Updated with redirect functionality
+
 class NotificationSystem {
     constructor() {
         // Initialize toast container
@@ -140,7 +141,7 @@ class NotificationSystem {
         // Base classes for all toasts
         const baseClasses = 'flex items-center w-full max-w-sm p-2 mb-2 rounded-lg shadow transition-all duration-300 ease-in-out transform translate-x-0';
         
-        toast.className = `${baseClasses} ${config.bgColor}`;
+        toast.className = `${baseClasses} ${config.bgColor} cursor-pointer`;
         
         const count = cacheEntry?.count > 1 ? ` (${cacheEntry.count}x)` : '';
         toast.innerHTML = `
@@ -148,10 +149,17 @@ class NotificationSystem {
             <div class="text-sm font-normal">${message}${count}</div>
             <button type="button" 
                     class="ml-auto -mx-1 -my-1 rounded-lg focus:ring-2 focus:ring-gray-300 p-1 inline-flex h-6 w-6 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    onclick="notificationSystem.dismissToast('${toastId}')">
+                    onclick="event.stopPropagation(); notificationSystem.dismissToast('${toastId}')">
                 <i class="fas fa-times text-sm"></i>
             </button>
         `;
+
+        // Add click event to redirect to dashboard
+        toast.addEventListener('click', function(e) {
+            if (!e.target.closest('button')) {
+                window.location.href = '/dashboard';
+            }
+        });
 
         // Add to container with entrance animation
         toast.style.opacity = '0';
@@ -240,7 +248,7 @@ class NotificationSystem {
         
         // Create notification element
         const notification = document.createElement('div');
-        notification.className = 'p-4 border-b border-gray-200 hover:bg-gray-50';
+        notification.className = 'p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer';
         
         const config = this.typeConfig[type] || this.typeConfig.warning;
         const count = existing?.count > 1 ? ` (${existing.count}x)` : '';
@@ -260,6 +268,16 @@ class NotificationSystem {
                 </button>
             </div>
         `;
+        
+        // Add click event to redirect to dashboard
+        notification.addEventListener('click', function(e) {
+            if (!e.target.closest('button')) {
+                window.location.href = '/dashboard';
+                // Close dropdown when navigating
+                const dropdown = document.getElementById('notificationsDropdown');
+                if (dropdown) dropdown.classList.add('hidden');
+            }
+        });
         
         // Add to list at the top
         if (this.notificationList.firstChild) {
@@ -292,4 +310,4 @@ class NotificationSystem {
 }
 
 // Initialize notification system
-const notificationSystem = new NotificationSystem()
+const notificationSystem = new NotificationSystem();

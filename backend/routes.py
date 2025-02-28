@@ -13,6 +13,31 @@ def login_page():
     """ Render the login page """
     return render_template('login.html') 
 
+@views.post('/login')
+def login():
+    if request.method == 'POST':
+        if not request.is_json:
+            return jsonify({"msg": "Missing or invalid JSON in request",
+                            "error": "Bad request"}), 400
+
+        username = request.json.get('username', None)
+        password = request.json.get('password', None)
+
+        if not username or not password:
+            return jsonify({"msg": "Username and password are required",
+                            "error": "Bad request"}), 400
+
+        user = User.query.filter_by(username=username).first()
+
+        if user and bcrypt.check_password_hash(user.password, password):
+            access_token = create_access_token(identity=str(user.id))
+            # refresh_token = create_refresh_token(identity=username)
+            return jsonify({"msg": "Welcome back, commander!",
+                        "access_token": access_token}), 200
+
+        return jsonify({"msg": "Invalid username or password",
+                        "error": "Something went wrong"}), 401
+
 @views.route('/dashboard')
 @jwt_required()
 def dashboard():
@@ -95,30 +120,3 @@ def system_stats():
         "cpu": {"percent": cpu},
         "temperature": {"celsius": round(temp_c, 2) if temp_c is not None else "N/A"}
     })
-   
-#login func
-@views.post('/login')
-# @func_logger
-def login():
-    if request.method == 'POST':
-        if not request.is_json:
-            return jsonify({"msg": "Missing or invalid JSON in request",
-                            "error": "Bad request"}), 400
-
-        username = request.json.get('username', None)
-        password = request.json.get('password', None)
-
-        if not username or not password:
-            return jsonify({"msg": "Username and password are required",
-                            "error": "Bad request"}), 400
-
-        user = User.query.filter_by(username=username).first()
-
-        if user and bcrypt.check_password_hash(user.password, password):
-            access_token = create_access_token(identity=str(user.id))
-            # refresh_token = create_refresh_token(identity=username)
-            return jsonify({"msg": "Welcome back, commander!",
-                        "access_token": access_token}), 200
-
-        return jsonify({"msg": "Invalid username or password",
-                        "error": "Something went wrong"}), 401
