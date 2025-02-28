@@ -14,20 +14,20 @@ def login_page():
     return render_template('login.html') 
 
 @views.route('/dashboard')
+@jwt_required()
 def dashboard():
     """Render the dashboard page with server-side JWT verification"""
     try:
-        verify_jwt_in_request()
         return render_template('dashboard.html')
     except Exception:
         return redirect('/')
 
 @views.route('/ap-scan')
+@jwt_required()
 def ap_scan():
     """Render the ap-scan page with server-side JWT verification"""
     try:
-        verify_jwt_in_request()
-        return render_template('ap-scan.html')
+        return render_template('ap_scan.html')
     except Exception:
         return redirect('/')
 

@@ -8,15 +8,7 @@ const CONFIG = {
     }
 };
 
-function getAuthHeaders() {
-    const token = localStorage.getItem('accessToken');
-    return {
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json'
-    };
-}
-
-// Network Status Management
+// Network Status Management flag
 let isServerConnected = false;
 
 // Theme handling
@@ -236,6 +228,7 @@ class NotificationHandler {
         document.getElementById('signOutBtn').addEventListener("click", function(event) {
             event.preventDefault();
             localStorage.clear();
+            document.cookie = "access_token_cookie=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 
             window.location.href = '/';
         });
@@ -396,7 +389,7 @@ async function refreshPacketData() {
         
         const response = await fetch(CONFIG.API_ENDPOINTS.PACKETS, {
             signal: controller.signal,
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
         
         clearTimeout(timeoutId);
@@ -462,7 +455,7 @@ async function refreshSystemStats() {
         
         const response = await fetch(CONFIG.API_ENDPOINTS.SYSTEM_STATS, {
             signal: controller.signal,
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
         
         clearTimeout(timeoutId);

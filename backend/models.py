@@ -7,5 +7,5 @@ class User(DB.Model):
 
     id = DB.Column(DB.Integer, primary_key=True)
     username = DB.Column(DB.String(15), nullable=False, unique=True)
-    password = DB.Column(DB.String(15), nullable=False)
+    password = DB.Column(DB.String(), nullable=False)
     added_at = DB.Column(DB.DateTime, default=lambda: datetime.now(timezone.utc))

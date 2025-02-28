@@ -27,10 +27,10 @@ def create_app():
     # JWT Configuration
     app.config['JWT_SECRET_KEY'] = 'your_secret_key_here'
     app.config['JWT_ALGORITHM'] = "HS256"
-    app.config['JWT_TOKEN_LOCATION'] = ["headers"]
+    app.config['JWT_TOKEN_LOCATION'] = ["cookies"]
+    app.config['JWT_COOKIE_NAME'] = "access_token_cookie"
+    app.config['JWT_COOKIE_CSRF_PROTECT'] = False 
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
-    app.config['JWT_HEADER_TYPE'] = "Bearer"
-    app.config['JWT_HEADER_NAME'] = "Authorization"
 
     # Initialize extensions
     CORS(app)
