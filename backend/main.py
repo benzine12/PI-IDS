@@ -4,7 +4,7 @@ import threading
 from datetime import timedelta
 from flask_cors import CORS
 from scapy.all import sniff
-from flask import Flask
+from flask import Flask, redirect
 from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import logging, time
 from routes import views
@@ -19,7 +19,6 @@ def create_app():
         static_folder=os.path.join(BASE_DIR, 'frontend', 'static'),
         template_folder=os.path.join(BASE_DIR, 'frontend', 'templates')
     )
-    
     # Configure the application
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wids.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -31,6 +30,7 @@ def create_app():
     app.config['JWT_COOKIE_NAME'] = "access_token_cookie"
     app.config['JWT_COOKIE_CSRF_PROTECT'] = False 
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+    app.config['JWT_ERROR_MESSAGE_KEY'] = 'msg'
 
     # Initialize extensions
     CORS(app)
@@ -38,6 +38,22 @@ def create_app():
     bcrypt.init_app(app)
     jwt.init_app(app)
     
+# JWT error handlers for redirecting to login
+    @jwt.unauthorized_loader
+    def handle_unauthorized_loader(msg):
+        """Called when no JWT is present in the request"""
+        return redirect('/')
+
+    @jwt.invalid_token_loader
+    def handle_invalid_token(msg):
+        """Called when the JWT is invalid, malformed, or tampered with"""
+        return redirect('/')
+
+    @jwt.expired_token_loader
+    def handle_expired_token(jwt_header, jwt_payload):
+        """Called when the JWT has expired"""
+        return redirect('/')
+
     # Register blueprints
     app.register_blueprint(views)
     

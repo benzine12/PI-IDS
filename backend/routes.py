@@ -1,6 +1,6 @@
 # routes.py
 from flask import Blueprint, jsonify, redirect, render_template, request
-from flask_jwt_extended import create_access_token, jwt_required, verify_jwt_in_request
+from flask_jwt_extended import create_access_token, jwt_required
 import psutil
 from models import User
 from data import state,bcrypt
