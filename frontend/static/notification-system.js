@@ -214,12 +214,13 @@ class NotificationSystem {
         
         const clearButton = document.createElement('button');
         clearButton.id = 'clear-toasts-btn';
-        clearButton.className = 'fixed top-4 right-4 z-50 bg-gray-700 text-white px-3 py-1.5 rounded-md shadow-md hover:bg-gray-800 transition-all duration-300 flex items-center space-x-1 text-sm';
+        clearButton.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 mt-2 z-50 bg-gray-700 bg-opacity-20 hover:bg-opacity-80 text-white px-3 py-1.5 rounded-md shadow-sm transition-all duration-300 flex items-center space-x-1 text-sm';
         clearButton.innerHTML = `
             <i class="fas fa-times-circle"></i>
             <span>Clear Toasts</span>
         `;
         clearButton.style.display = 'none';
+        clearButton.style.marginTop = '-8px'; // Position just above the toasts
         clearButton.onclick = () => this.clearAllToasts();
         
         document.body.appendChild(clearButton);
