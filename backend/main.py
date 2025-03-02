@@ -156,7 +156,14 @@ if __name__ == '__main__':
     with app.app_context():
         DB.create_all()
     
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler("logs.log"),
+            logging.StreamHandler()
+        ]
+    )
     log = logging.getLogger('werkzeug')
     log.disabled = True
 
