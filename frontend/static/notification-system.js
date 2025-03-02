@@ -295,19 +295,6 @@ class NotificationSystem {
             this.notificationCount.textContent = this.count;
         }
     }
-
-    clearAll() {
-        // Clear notification list
-        if (this.notificationList) {
-            this.notificationList.innerHTML = '';
-        }
-        
-        // Reset counter and caches
-        this.count = 0;
-        this.notificationCount.textContent = '0';
-        this.notificationCache.clear();
-        this.rateLimits.clear();
-    }
 }
 
 // Initialize notification system

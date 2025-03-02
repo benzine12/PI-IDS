@@ -205,26 +205,6 @@ class NotificationHandler {
     }
 
     setupNotificationSystem() {
-        // Override the original clearAll method
-        notificationSystem.clearAll = () => {
-            // Clear the notifications list without triggering new notifications
-            const notificationsList = document.getElementById('notificationsList');
-            if (notificationsList) {
-                notificationsList.innerHTML = '';
-            }
-            
-            // Reset the counter
-            const notificationCount = document.getElementById('notificationCount');
-            if (notificationCount) {
-                notificationCount.textContent = '0';
-            }
-            notificationSystem.count = 0;
-            
-            // Clear storage
-            localStorage.removeItem('navbarNotifications');
-            localStorage.removeItem('acknowledgedThreats');
-            this.acknowledgedThreats.clear();
-        };
         document.getElementById('signOutBtn').addEventListener("click", function(event) {
             event.preventDefault();
             localStorage.clear();
@@ -363,25 +343,7 @@ class NotificationHandler {
 
 // Initialize the notification handler
 const notificationHandler = new NotificationHandler();
-notificationSystem.clearAll = function() {
-    // Clear the notifications list without triggering new notifications
-    const notificationsList = document.getElementById('notificationsList');
-    if (notificationsList) {
-        notificationsList.innerHTML = '';
-    }
-    
-    // Reset the counter
-    const notificationCount = document.getElementById('notificationCount');
-    if (notificationCount) {
-        notificationCount.textContent = '0';
-    }
-    this.count = 0;
-    
-    // Clear storage
-    localStorage.removeItem('navbarNotifications');
-    localStorage.removeItem('acknowledgedThreats');
-    notificationHandler.acknowledgedThreats.clear();
-};
+
 async function refreshPacketData() {
     try {
         const controller = new AbortController();
