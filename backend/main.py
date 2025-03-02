@@ -29,7 +29,7 @@ def create_app():
     app.config['JWT_TOKEN_LOCATION'] = ["cookies"]
     app.config['JWT_COOKIE_NAME'] = "access_token_cookie"
     app.config['JWT_COOKIE_CSRF_PROTECT'] = False 
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
     app.config['JWT_ERROR_MESSAGE_KEY'] = 'msg'
 
     # Initialize extensions
