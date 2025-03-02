@@ -1,4 +1,5 @@
 # routes.py
+import logging
 from flask import Blueprint, jsonify, redirect, render_template, request
 from flask_jwt_extended import create_access_token, jwt_required
 import psutil
@@ -161,7 +162,6 @@ def set_to_protected():
 
             DB.session.add(add_ap)
             DB.session.commit()
-            
+            logging.warning(f"Added new AP: BSSID={data['bssid']}, ESSID={data['essid']}")
             return jsonify({"msg": "AP added successfully"}), 201
-
 
