@@ -109,3 +109,6 @@ class APScanner:
 
 ap_scanner = APScanner()
 
+# class KarmaDetector:
+#     def __init__(self):
+

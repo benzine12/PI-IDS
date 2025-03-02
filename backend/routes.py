@@ -2,43 +2,18 @@
 from flask import Blueprint, jsonify, redirect, render_template, request
 from flask_jwt_extended import create_access_token, jwt_required
 import psutil
-from models import User
-from data import state,bcrypt
+from models import AP, User
+from data import DB, state,bcrypt
 from modules import ap_scanner
 
 views = Blueprint('views', __name__)
 
-@views.route('/')
+@views.get('/')
 def login_page():
     """ Render the login page """
     return render_template('login.html') 
 
-@views.post('/login')
-def login():
-    if request.method == 'POST':
-        if not request.is_json:
-            return jsonify({"msg": "Missing or invalid JSON in request",
-                            "error": "Bad request"}), 400
-
-        username = request.json.get('username', None)
-        password = request.json.get('password', None)
-
-        if not username or not password:
-            return jsonify({"msg": "Username and password are required",
-                            "error": "Bad request"}), 400
-
-        user = User.query.filter_by(username=username).first()
-
-        if user and bcrypt.check_password_hash(user.password, password):
-            access_token = create_access_token(identity=str(user.id))
-            # refresh_token = create_refresh_token(identity=username)
-            return jsonify({"msg": "Welcome back, commander!",
-                        "access_token": access_token}), 200
-
-        return jsonify({"msg": "Invalid username or password",
-                        "error": "Something went wrong"}), 401
-
-@views.route('/dashboard')
+@views.get('/dashboard')
 @jwt_required()
 def dashboard():
     """Render the dashboard page with server-side JWT verification"""
@@ -47,7 +22,7 @@ def dashboard():
     except Exception:
         return redirect('/')
 
-@views.route('/ap-scan')
+@views.get('/ap-scan')
 @jwt_required()
 def ap_scan():
     """Render the ap-scan page with server-side JWT verification"""
@@ -120,3 +95,73 @@ def system_stats():
         "cpu": {"percent": cpu},
         "temperature": {"celsius": round(temp_c, 2) if temp_c is not None else "N/A"}
     })
+   
+@views.post('/login')
+def login():
+    if request.method == 'POST':
+        if not request.is_json:
+            return jsonify({"msg": "Missing or invalid JSON in request",
+                            "error": "Bad request"}), 400
+
+        username = request.json.get('username', None)
+        password = request.json.get('password', None)
+
+        if not username or not password:
+            return jsonify({"msg": "Username and password are required",
+                            "error": "Bad request"}), 400
+
+        user = User.query.filter_by(username=username).first()
+
+        if user and bcrypt.check_password_hash(user.password, password):
+            access_token = create_access_token(identity=str(user.id))
+            # refresh_token = create_refresh_token(identity=username)
+            return jsonify({"msg": "Welcome back, commander!",
+                        "access_token": access_token}), 200
+
+        return jsonify({"msg": "Invalid username or password",
+                        "error": "Something went wrong"}), 401
+    
+@views.post('/set_to_protected')
+@jwt_required()
+def set_to_protected():
+    if request.method == 'POST':
+        if not request.is_json:
+            return jsonify({"msg": "Missing or invalid JSON in request",
+                            "error": "Bad request"}), 400
+        data = request.json
+        # Define allowed fields
+        allowed_fields = {"bssid", "essid", "band","crypto"}
+        unexpected_fields = set(data.keys()) - allowed_fields
+        if unexpected_fields:
+            return jsonify({"msg": "Missing or invalid JSON in request",
+                            "error": "Bad request"}), 400
+        # Validate required fields
+        if not allowed_fields.issubset(data.keys()):
+            return jsonify({"msg": "Missing or invalid JSON in request",
+                            "error": "Bad request"}), 400
+        
+        existing_ap = AP.query.filter_by(bssid=data["bssid"]).first()
+        if existing_ap:
+
+            existing_ap.essid = data["essid"]
+            existing_ap.band = data["band"] 
+            existing_ap.crypto = data["crypto"]
+
+            DB.session.commit()
+
+            return jsonify({"msg": "AP updated successfully"}), 200
+        else:
+
+            add_ap = AP(
+                bssid = data["bssid"],
+                essid = data["essid"],
+                band = data["band"],
+                crypto = data["crypto"],
+            )
+
+            DB.session.add(add_ap)
+            DB.session.commit()
+            
+            return jsonify({"msg": "AP added successfully"}), 201
+
+
