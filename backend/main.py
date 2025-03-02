@@ -156,14 +156,10 @@ if __name__ == '__main__':
     with app.app_context():
         DB.create_all()
     
-    # Configure logging
-    logging.basicConfig(level=logging.ERROR,
-                       format="%(asctime)s - %(message)s",
-                       filename='logs.log',
-                       encoding='utf-8')
-    
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
     log = logging.getLogger('werkzeug')
     log.disabled = True
+
     
     start_sniffing(interface)
     app.run(host='0.0.0.0', port=5000, debug=False)
