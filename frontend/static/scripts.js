@@ -200,6 +200,7 @@ class NotificationHandler {
     constructor() {
         this.acknowledgedThreats = new Set(this.loadAcknowledgedThreats());
         this.lastThreatCount = 0;
+        this.attackCountNotifications = {};  // Track attack counts for notifications
         this.restoreNavbarNotifications();
         this.setupNotificationSystem();
     }
@@ -312,6 +313,27 @@ class NotificationHandler {
         }
     }
 
+    // Modified to also store attack count notifications
+    saveAttackCountNotifications() {
+        try {
+            localStorage.setItem('attackCountNotifications', 
+                JSON.stringify(this.attackCountNotifications));
+        } catch (error) {
+            console.error('Error saving attack count notifications:', error);
+        }
+    }
+
+    // Load attack count notifications
+    loadAttackCountNotifications() {
+        try {
+            const saved = localStorage.getItem('attackCountNotifications');
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) {
+            console.error('Error loading attack count notifications:', error);
+            return {};
+        }
+    }
+
     generateThreatKey(threat) {
         return `${threat.src_mac}-${threat.dst_mac}-${threat.attack_type}-${threat.time}`;
     }
@@ -319,25 +341,49 @@ class NotificationHandler {
     handleNewThreats(threats) {
         if (!Array.isArray(threats)) return;
 
-        const newThreats = threats.filter(threat => {
-            const threatKey = this.generateThreatKey(threat);
-            return !this.acknowledgedThreats.has(threatKey);
-        });
+        // Initialize attack count notifications if not already loaded
+        if (Object.keys(this.attackCountNotifications).length === 0) {
+            this.attackCountNotifications = this.loadAttackCountNotifications();
+        }
 
-        if (newThreats.length > 0) {
-            newThreats.forEach(threat => {
-                const threatKey = this.generateThreatKey(threat);
+        // Process each threat
+        threats.forEach(threat => {
+            const threatKey = this.generateThreatKey(threat);
+            const targetMAC = threat.dst_mac;
+            const currentCount = threat.count || 0;
+            
+            // Only notify on the initial detection or when count reaches a multiple of 10
+            const isInitialDetection = !this.acknowledgedThreats.has(threatKey);
+            const isMultipleOfTen = currentCount > 0 && currentCount % 10 === 0;
+            
+            // Get last notified count
+            const lastNotifiedCount = this.attackCountNotifications[targetMAC] || 0;
+            
+            // Only show notification if:
+            // 1. It's the initial detection, OR
+            // 2. It's a multiple of 10 AND we haven't already notified for this specific count
+            if (isInitialDetection || (isMultipleOfTen && lastNotifiedCount < currentCount)) {
                 notificationSystem.show(
                     `Detected attack from ${threat.src_mac} to ${threat.dst_mac} (${threat.attack_type})`,
                     'danger'
                 );
-                this.acknowledgedThreats.add(threatKey);
-            });
-            
-            // Save after all notifications are added
-            setTimeout(() => this.saveNavbarNotifications(), 100);
-            this.saveAcknowledgedThreats();
-        }
+                
+                // Add to acknowledged threats if it's initial detection
+                if (isInitialDetection) {
+                    this.acknowledgedThreats.add(threatKey);
+                }
+                
+                // Update the last notified count if it's a multiple of 10
+                if (isMultipleOfTen) {
+                    this.attackCountNotifications[targetMAC] = currentCount;
+                    this.saveAttackCountNotifications();
+                }
+            }
+        });
+        
+        // Save after all notifications are processed
+        setTimeout(() => this.saveNavbarNotifications(), 100);
+        this.saveAcknowledgedThreats();
     }
 }
 
