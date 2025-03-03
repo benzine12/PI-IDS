@@ -52,7 +52,8 @@ async function updateAPList() {
                                 data-bssid="${ap.bssid}" 
                                 data-essid="${ap.essid}" 
                                 data-band="${ap.band}" 
-                                data-crypto="${ap.crypto.join(',')}">
+                                data-crypto="${ap.crypto.join(',')}"
+                                ${ap.protected ? 'checked' : ''}>
                             <span class="slider"></span>
                         </label>
                     </td>
@@ -70,6 +71,8 @@ async function updateAPList() {
                     
                     if (this.checked) {
                         setToProtected(bssid, essid, band, crypto);
+                    } else {
+                        removeFromProtected(bssid, essid);
                     }
                 });
             });
@@ -124,6 +127,50 @@ async function setToProtected(bssid, essid, band, crypto) {
         const toggle = document.querySelector(`.ap-protect-toggle[data-bssid="${bssid}"]`);
         if (toggle) {
             toggle.checked = false;
+        }
+    }
+}
+
+async function removeFromProtected(bssid, essid) {
+    try {
+        const response = await fetch('/remove_from_protected', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                bssid: bssid
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to remove AP from protected list');
+        }
+        
+        const data = await response.json();
+        
+        // Show notification if notification system exists
+        if (typeof notificationSystem !== 'undefined') {
+            notificationSystem.show(
+                `${data.msg}: ${essid}`,
+                'success'
+            );
+        }
+        
+    } catch (error) {
+        console.error('Error removing AP from protection:', error);
+        if (typeof notificationSystem !== 'undefined') {
+            notificationSystem.show(
+                `Failed to remove AP from protection: ${essid}`,
+                'warning'
+            );
+        }
+        
+        // Reset the toggle if protection removal failed
+        const toggle = document.querySelector(`.ap-protect-toggle[data-bssid="${bssid}"]`);
+        if (toggle) {
+            toggle.checked = true;
         }
     }
 }

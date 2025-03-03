@@ -1,10 +1,10 @@
-# routes.py
+# routes.py - Updated with protected AP management
 import logging
 from flask import Blueprint, jsonify, redirect, render_template, request
 from flask_jwt_extended import create_access_token, jwt_required
 import psutil
 from models import AP, User
-from data import DB, state,bcrypt
+from data import DB, state, bcrypt
 from modules import ap_scanner
 
 views = Blueprint('views', __name__)
@@ -39,6 +39,15 @@ def get_aps():
     try:
         aps = ap_scanner.get_active_aps()
         stats = ap_scanner.get_ap_stats()
+        
+        # Get all protected APs from the database
+        protected_aps = AP.query.all()
+        protected_bssids = [ap.bssid for ap in protected_aps]
+        
+        # Mark protected APs in the response
+        for ap in aps:
+            ap["protected"] = ap["bssid"] in protected_bssids
+        
         return jsonify({
             "status": "success",
             "access_points": aps,
@@ -165,3 +174,33 @@ def set_to_protected():
             logging.warning(f"Added new AP: BSSID={data['bssid']}, ESSID={data['essid']}")
             return jsonify({"msg": "AP added successfully"}), 201
 
+@views.post('/remove_from_protected')
+@jwt_required()
+def remove_from_protected():
+    """Remove an AP from the protected list"""
+    if request.method == 'POST':
+        if not request.is_json:
+            return jsonify({"msg": "Missing or invalid JSON in request",
+                            "error": "Bad request"}), 400
+        
+        data = request.json
+        
+        # Validate required fields
+        if "bssid" not in data:
+            return jsonify({"msg": "BSSID is required",
+                            "error": "Bad request"}), 400
+        
+        # Find and delete the AP
+        ap = AP.query.filter_by(bssid=data["bssid"]).first()
+        if not ap:
+            return jsonify({"msg": "AP not found in protected list",
+                           "error": "Not found"}), 404
+        
+        essid = ap.essid  # Store for the log message
+        
+        # Delete the AP from the database
+        DB.session.delete(ap)
+        DB.session.commit()
+        
+        logging.warning(f"Removed AP from protected list: BSSID={data['bssid']}, ESSID={essid}")
+        return jsonify({"msg": "AP removed from protected list successfully"}), 200
