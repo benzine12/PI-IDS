@@ -1,4 +1,4 @@
-from scapy.layers.dot11 import Dot11Beacon, Dot11, RadioTap,Dot11Deauth
+from scapy.layers.dot11 import Dot11Beacon, Dot11, RadioTap,Dot11Deauth,Dot11ProbeResp,Dot11ProbeReq
 import logging
 from collections import defaultdict
 import time
@@ -107,7 +107,3 @@ class APScanner:
         pass
 
 ap_scanner = APScanner()
-
-# class KarmaDetector:
-#     def __init__(self):
-
