@@ -107,3 +107,122 @@ class APScanner:
         pass
 
 ap_scanner = APScanner()
+
+class ProbeScannerDetector:
+    """Class to detect unusual probe request scanning activity"""
+    def __init__(self, time_window=30, threshold=10, unique_ssids_threshold=3):
+        """Initialize the probe scanner detector.
+        
+        Args:
+            time_window (int): Time window in seconds to analyze probe requests
+            threshold (int): Number of probe requests within time window to trigger detection
+            unique_ssids_threshold (int): Minimum number of unique SSIDs requested to consider it scanning
+        """
+        self.time_window = time_window
+        self.threshold = threshold
+        self.unique_ssids_threshold = unique_ssids_threshold
+        
+        # Store probe requests with timestamp
+        self.probe_history = defaultdict(list)  # MAC -> [(timestamp, ssid), ...]
+        self.detected_scanners = set()  # Track MACs already detected as scanners
+        self.last_alert_time = defaultdict(float)  # MAC -> last alert timestamp
+        self.alert_cooldown = 300  # 5 minutes between repeated alerts for the same MAC
+        
+    def process_packet(self, packet):
+        """Process a packet to detect if it's a probe request part of a scanning pattern"""
+        if not packet.haslayer(Dot11ProbeReq):
+            return None
+            
+        try:
+            dot11 = packet[Dot11]
+            src_mac = dot11.addr2
+            
+            ssid = ''
+            if packet.haslayer(Dot11ProbeReq):
+                if packet[Dot11ProbeReq].info:
+                    ssid = packet[Dot11ProbeReq].info.decode('utf-8', errors='replace')
+            
+            current_time = time.time()
+            
+            # Add the probe request to history
+            self.probe_history[src_mac].append((current_time, ssid))
+            
+            # Clean up old entries
+            self.cleanup_history(src_mac, current_time)
+            
+            # Check if this MAC is scanning
+            if self.is_scanning(src_mac, current_time):
+                # Avoid repeated alerts for the same MAC
+                if (current_time - self.last_alert_time[src_mac] > self.alert_cooldown or
+                    src_mac not in self.detected_scanners):
+                    
+                    self.detected_scanners.add(src_mac)
+                    self.last_alert_time[src_mac] = current_time
+                    
+                    # Get signal strength if available
+                    signal_strength = getattr(packet, 'dBm_AntSignal', 'N/A')
+                    
+                    # Count unique SSIDs
+                    unique_ssids = set(ssid for _, ssid in self.probe_history[src_mac])
+                    
+                    # Log the detection
+                    attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
+                    logging.warning(f"Probe scanner detected from {src_mac} at {attack_time}")
+                    
+                    # Return detection information
+                    return {
+                        "src_mac": src_mac,
+                        "essid": "Multiple" if len(unique_ssids) > 1 else next(iter(unique_ssids), "Unknown"),
+                        "unique_ssids": len(unique_ssids),
+                        "probe_count": len(self.probe_history[src_mac]),
+                        "time": attack_time,
+                        "signal_strength": signal_strength,
+                        "attack_type": "Probe Scanner",
+                    }
+            
+        except Exception as e:
+            logging.error(f"Error processing probe request: {e}")
+            
+        return None
+    
+    def cleanup_history(self, mac, current_time):
+        """Remove probe requests older than the time window.
+        
+        Args:
+            mac (str): MAC address to cleanup
+            current_time (float): Current timestamp
+        """
+        self.probe_history[mac] = [
+            (ts, ssid) for ts, ssid in self.probe_history[mac]
+            if current_time - ts <= self.time_window
+        ]
+    
+    def is_scanning(self, mac, current_time):
+        """Determine if a MAC address is exhibiting scanning behavior.
+        
+        A MAC is considered to be scanning if:
+        1. It has sent more probe requests than the threshold within the time window
+        2. It has requested more unique SSIDs than the unique SSIDs threshold
+        
+        Args:
+            mac (str): MAC address to check
+            current_time (float): Current timestamp
+            
+        Returns:
+            bool: True if scanning detected, False otherwise
+        """
+        # Get probes within the time window
+        probes = [p for p in self.probe_history[mac] 
+                if current_time - p[0] <= self.time_window]
+        
+        if len(probes) < self.threshold:
+            return False
+        
+        # Count unique SSIDs being probed
+        unique_ssids = set(ssid for _, ssid in probes)
+        
+        # Detect based on volume and uniqueness
+        return (len(probes) >= self.threshold and 
+                len(unique_ssids) >= self.unique_ssids_threshold)
+    
+probe_detector = ProbeScannerDetector()

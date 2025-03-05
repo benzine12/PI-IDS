@@ -76,13 +76,12 @@ def get_aps():
         return jsonify({
             "status": "success",
             "access_points": aps,
-            "statistics": stats
-        })
+            "statistics": stats})
     except Exception as e:
+
         return jsonify({
             "status": "error",
-            "message": str(e)
-        }), 500
+            "message": str(e)}), 500
 
 @views.get('/packets')
 @jwt_required()

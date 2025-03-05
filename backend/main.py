@@ -9,7 +9,7 @@ from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import logging, time
 from routes import views
 from data import state, BASE_DIR, DB, bcrypt, jwt
-from modules import detector, ap_scanner 
+from modules import detector, ap_scanner, probe_detector
 import subprocess
 
 def create_app():
@@ -126,11 +126,32 @@ def is_deauth(packet):
         logging.error(f"Error processing packet: {e}")
     return False
 
+def is_prob_scanner(packet):
+    try:
+        probe_detection = probe_detector.process_packet(packet)
+        if probe_detection:
+            # Add to the state's detected_attacks list
+            src_mac = probe_detection["src_mac"]
+            state.attack_counts[src_mac] += 1
+            probe_detection["count"] = state.attack_counts[src_mac]
+            state.detected_attacks.append(probe_detection)
+        
+            current_time = time.time()
+            state.attack_log[src_mac].append(current_time)
+            logging.warning(f"Probe scanner detected from {src_mac} at {probe_detection['time']}")
+
+            return True
+    except Exception as e:
+        logging.error(f"Error processing packet: {e}")
+    return False
+
 def packet_handler(packet):
     """Handle the packets received by the sniffer"""
     state.packet_counter += 1
     is_deauth(packet)
+    is_prob_scanner(packet)
     ap_scanner.process_beacon(packet)
+
 
 def start_sniffing(interface):
     """Start the packet sniffing on the specified interface"""
