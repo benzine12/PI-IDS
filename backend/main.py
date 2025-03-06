@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 import threading
 from datetime import timedelta
 from flask_cors import CORS
@@ -7,10 +8,12 @@ from scapy.all import sniff
 from flask import Flask, redirect
 from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import logging, time
+from models import Attack
 from routes import views
-from data import state, BASE_DIR, DB, bcrypt, jwt
+from data import BASE_DIR, DB, bcrypt, jwt, state
 from modules import detector, ap_scanner, probe_detector
 import subprocess
+from datetime import datetime, timezone
 
 def create_app():
     """Create and configure the Flask application"""
@@ -76,11 +79,10 @@ def to_monitor(interface):
         exit()
 
 def is_deauth(packet):
-    """Check if the packet is a deauth attack and add it to the detected_attacks list"""
+    """Check if the packet is a deauth attack and save it to the database"""
     try:
         if packet.haslayer(Dot11Deauth):
             dot11 = packet[Dot11]
-            deauth = packet[Dot11Deauth]
             
             # pass the packet to detector to check if it matches the pattern
             if not detector.detect_pattern(packet):
@@ -102,47 +104,89 @@ def is_deauth(packet):
             attack_type = "Deauth"
 
             attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
-            current_time = time.time()
             
-            state.attack_log[dst_mac].append(current_time)
+            # update the state manager 
+            state.attack_log[dst_mac].append(time.time())
             state.attack_counts[dst_mac] += 1
 
             logging.warning(f"{attack_type} attack detected on {essid} at {attack_time}")
 
-            # append the attack to the detected_attacks list
-            state.detected_attacks.append({
-                "src_mac": src_mac,
-                "dst_mac": dst_mac,
-                "essid": essid,
-                "channel": channel,
-                "reason_code": deauth.reason,
-                "time": attack_time,
-                "signal_strength": signal_strength,
-                "attack_type": attack_type,
-                "count": state.attack_counts[dst_mac],
-            })
+            # Find existing attack or create new one
+            with app.app_context():
+                existing = Attack.query.filter_by(
+                    attack_type=attack_type,
+                    src_mac=src_mac,
+                    dst_mac=dst_mac
+                ).first()
+                
+                if existing:
+                    existing.count += 1
+                    existing.last_seen = datetime.now(timezone.utc)
+                    existing.signal_strength = signal_strength
+                else:
+                    new_attack = Attack(
+                        attack_type=attack_type,
+                        src_mac=src_mac,
+                        dst_mac=dst_mac,
+                        essid=essid,
+                        bssid=bssid,
+                        channel=channel,
+                        signal_strength=signal_strength,
+                        count=1
+                    )
+                    DB.session.add(new_attack)
+                
+                DB.session.commit()
+            
             return True
+            
     except Exception as e:
         logging.error(f"Error processing packet: {e}")
     return False
 
 def is_prob_scanner(packet):
+    """Check if the packet is from a probe scanner and save it to the database"""
     try:
         probe_detection = probe_detector.process_packet(packet)
         if probe_detection:
-            # Add to the state's detected_attacks list
             src_mac = probe_detection["src_mac"]
+            essid = probe_detection.get("essid", "Multiple")
+            signal_strength = probe_detection.get("signal_strength", "N/A")
+            attack_time = probe_detection.get("time", time.strftime("%Y-%m-%d %H:%M:%S"))
+            
+            state.attack_log[src_mac].append(time.time())
             state.attack_counts[src_mac] += 1
-            probe_detection["count"] = state.attack_counts[src_mac]
-            state.detected_attacks.append(probe_detection)
-        
-            current_time = time.time()
-            state.attack_log[src_mac].append(current_time)
-            logging.warning(f"Probe scanner detected from {src_mac} at {probe_detection['time']}")
-
+            
+            logging.warning(f"Probe scanner detected from {src_mac} at {attack_time}")
+            
+            # Save to database
+            with app.app_context():
+                existing = Attack.query.filter_by(
+                    attack_type="Probe Scanner",
+                    src_mac=src_mac
+                ).first()
+                
+                if existing:
+                    existing.count += 1
+                    existing.last_seen = datetime.now(timezone.utc)
+                    existing.signal_strength = signal_strength
+                else:
+                    new_attack = Attack(
+                        attack_type="Probe Scanner",
+                        src_mac=src_mac,
+                        essid=essid,
+                        signal_strength=signal_strength,
+                        count=1,
+                        channel=probe_detection.get("channel", "N/A")
+                    )
+                    DB.session.add(new_attack)
+                
+                DB.session.commit()
+            
             return True
+            
     except Exception as e:
-        logging.error(f"Error processing packet: {e}")
+        logging.error(f"Error processing packet in is_prob_scanner: {e}")
     return False
 
 def packet_handler(packet):

@@ -110,7 +110,7 @@ ap_scanner = APScanner()
 
 class ProbeScannerDetector:
     """Class to detect unusual probe request scanning activity"""
-    def __init__(self, time_window=30, threshold=10, unique_ssids_threshold=3):
+    def __init__(self, time_window=30, threshold=15, unique_ssids_threshold=5):
         """Initialize the probe scanner detector.
         
         Args:

@@ -3,7 +3,7 @@ import logging
 from flask import Blueprint, jsonify, redirect, render_template, request
 from flask_jwt_extended import create_access_token, jwt_required
 import psutil
-from models import AP, User
+from models import AP, Attack, User
 from data import DB, state, bcrypt
 from modules import ap_scanner
 
@@ -86,21 +86,33 @@ def get_aps():
 @views.get('/packets')
 @jwt_required()
 def get_packets():
-    """ Get the detected packets """
-    aggregated_results = {}
-    for packet in state.detected_attacks:
-        dst_mac = packet["dst_mac"]
-        if dst_mac not in aggregated_results:
-            aggregated_results[dst_mac] = packet
-        else:
-            aggregated_results[dst_mac]["count"] = state.attack_counts[dst_mac]
-
+    """Get the detected packets"""
+    # Get recent attacks from database
+    attacks = Attack.query.order_by(Attack.last_seen.desc()).limit(100).all()
+    
+    # Convert to serializable format
+    attack_list = []
+    for attack in attacks:
+        attack_dict = {
+            "src_mac": attack.src_mac,
+            "dst_mac": attack.dst_mac or "N/A",
+            "essid": attack.essid or "Unknown",
+            "channel": attack.channel or "N/A",
+            "bssid": attack.bssid or "N/A",
+            "signal_strength": attack.signal_strength or "N/A",
+            "attack_type": attack.attack_type,
+            "count": attack.count,
+            "time": attack.last_seen.strftime("%Y-%m-%d %H:%M:%S"),
+            "reason_code": "7" if attack.attack_type == "Deauth" else ""
+        }
+        attack_list.append(attack_dict)
+    
     return jsonify({
-        "detected_attacks": list(aggregated_results.values()),
+        "detected_attacks": attack_list,
         "total_packets": state.packet_counter,
-        "threats": len(state.detected_attacks)
+        "threats": len(attack_list)
     })
-        
+
 @views.get('/system-stats')
 @jwt_required()
 def system_stats():

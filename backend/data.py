@@ -11,7 +11,6 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 class StateManager:
     def __init__(self):
         self.packet_counter = 0
-        self.detected_attacks = []
         self.attack_log = defaultdict(list)
         self.attack_counts = defaultdict(int)
 
