@@ -88,12 +88,13 @@ def get_aps():
 def get_packets():
     """Get the detected packets"""
     # Get recent attacks from database
-    attacks = Attack.query.order_by(Attack.last_seen.desc()).limit(100).all()
+    attacks = Attack.query.order_by(Attack.last_seen.desc()).filter_by(resolved=False).limit(100).all()
     
     # Convert to serializable format
     attack_list = []
     for attack in attacks:
         attack_dict = {
+            "id":attack.id,
             "src_mac": attack.src_mac,
             "dst_mac": attack.dst_mac or "N/A",
             "essid": attack.essid or "Unknown",
@@ -112,6 +113,12 @@ def get_packets():
         "total_packets": state.packet_counter,
         "threats": len(attack_list)
     })
+
+# @views.put('/resolve_attack/<int:id>')
+# @jwt_required
+# def resolve_attack(id):
+#     data = request.json()
+
 
 @views.get('/system-stats')
 @jwt_required()
