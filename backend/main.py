@@ -110,7 +110,7 @@ def arguments_handler():
         # check wich arguments written
         if args.Create:
             username = args.Create
-
+            
             if len(args.Create) <=8:
                 print('Username should be longer then 8 letters')
                 exit()
