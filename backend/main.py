@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 import argparse
 import re
 
+interface = ''
+
 def create_app():
     """Create and configure the Flask application"""
     app = Flask(
@@ -90,7 +92,6 @@ def get_password():
         else:
             return password
 
-interface = ''
 def arguments_handler():
     """ handle different arguments from user"""
     try:
@@ -110,7 +111,7 @@ def arguments_handler():
         # check wich arguments written
         if args.Create:
             username = args.Create
-            
+
             if len(args.Create) <=8:
                 print('Username should be longer then 8 letters')
                 exit()

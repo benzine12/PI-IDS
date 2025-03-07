@@ -22,7 +22,7 @@ def setup_virtual_env():
     
     # Run main.py with sudo
     print("Running main.py with sudo...")
-    subprocess.run(["sudo", f"./env/bin/python", "main.py", "-i wlan1"], check=True)
+    subprocess.run(["sudo", f"./env/bin/python", "main.py","-i", "wlan1"], check=True)
 
 if __name__ == "__main__":
     setup_virtual_env()
