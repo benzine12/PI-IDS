@@ -390,63 +390,96 @@ class NotificationHandler {
 // Initialize the notification handler
 const notificationHandler = new NotificationHandler();
 
-async function refreshPacketData() {
+function refreshPacketData() {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
         
-        const response = await fetch(CONFIG.API_ENDPOINTS.PACKETS, {
+        fetch(CONFIG.API_ENDPOINTS.PACKETS, {
             signal: controller.signal,
             credentials: 'include'
+        })
+        .then(response => {
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch packet data');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Handle new threats using the notification handler
+            notificationHandler.handleNewThreats(data.detected_attacks);
+            
+            // Update total packets counter and chart
+            document.getElementById('totalPackets').textContent = data.total_packets;
+            updatePacketData(data.total_packets, data.threats || 0);
+            
+            // Update table
+            const packetBody = document.getElementById('packet-table-body');
+            packetBody.innerHTML = '';
+            
+            data.detected_attacks.forEach(packet => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.setAttribute('data-attack-id', packet.id);
+
+                const createCell = (content, isStatus = false) => {
+                    const td = document.createElement('td');
+                    td.className = `px-6 py-4 whitespace-nowrap text-sm ${isStatus ? '' : 'text-gray-500'}`;
+                    td.textContent = content;
+                    return td;
+                };
+                
+                row.appendChild(createCell(packet.id));
+                row.appendChild(createCell(packet.src_mac));
+                row.appendChild(createCell(packet.dst_mac));
+                row.appendChild(createCell(packet.essid));
+                row.appendChild(createCell(packet.channel));
+                row.appendChild(createCell(packet.reason_code));
+                row.appendChild(createCell(packet.time));
+                row.appendChild(createCell(packet.signal_strength));
+                row.appendChild(createCell(packet.attack_type));
+                row.appendChild(createCell(packet.count));
+                
+                const resolveCell = document.createElement('td');
+                resolveCell.className = 'px-6 py-4 text-sm text-center';
+                resolveCell.innerHTML = `
+                    <label class="theme-switch attack-switch">
+                        <input type="checkbox" class="attack-resolve-toggle"
+                            data-attack-id="${packet.id}">
+                        <span class="slider"></span>
+                    </label>
+                `;
+                row.appendChild(resolveCell);
+                
+                packetBody.appendChild(row);
+            });
+            
+            document.querySelectorAll('.attack-resolve-toggle').forEach(toggle => {
+                toggle.addEventListener('change', function() {
+                    const attackId = this.getAttribute('data-attack-id');
+                    
+                    if (this.checked) {
+                        resolveAttack(attackId);
+                    } else {  
+                        this.checked = true;
+                    }
+                });
+            });
+
+            document.getElementById('detectedThreats').textContent = data.threats || 0;
+            document.getElementById('activeConnections').textContent = data.active_connections || 0;
+            document.getElementById('protectedAPs').textContent = data.protected_aps || 0;
+            
+        })
+        .catch(error => {
+            console.error('Error refreshing packet data:', error);
+            if (!error.name === 'AbortError') {
+                isServerConnected = false;
+                updateConnectionStatus(false);
+            }
         });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch packet data');
-        }
-
-        const data = await response.json();
-        
-        // Handle new threats using the notification handler
-        notificationHandler.handleNewThreats(data.detected_attacks);
-        
-        // Update total packets counter and chart
-        document.getElementById('totalPackets').textContent = data.total_packets;
-        updatePacketData(data.total_packets, data.threats || 0);
-        
-        // Update table
-        const packetBody = document.getElementById('packet-table-body');
-        packetBody.innerHTML = '';
-        
-        data.detected_attacks.forEach(packet => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-gray-50';
-
-            const createCell = (content, isStatus = false) => {
-                const td = document.createElement('td');
-                td.className = `px-6 py-4 whitespace-nowrap text-sm ${isStatus ? '' : 'text-gray-500'}`;
-                td.textContent = content;
-                return td;
-            };
-            row.appendChild(createCell(packet.id));
-            row.appendChild(createCell(packet.src_mac));
-            row.appendChild(createCell(packet.dst_mac));
-            row.appendChild(createCell(packet.essid));
-            row.appendChild(createCell(packet.channel));
-            row.appendChild(createCell(packet.reason_code));
-            row.appendChild(createCell(packet.time));
-            row.appendChild(createCell(packet.signal_strength));
-            row.appendChild(createCell(packet.attack_type));
-            row.appendChild(createCell(packet.count));
-
-            packetBody.appendChild(row);
-        });     
-
-        document.getElementById('detectedThreats').textContent = data.threats || 0;
-        document.getElementById('activeConnections').textContent = data.active_connections || 0;
-        document.getElementById('protectedAPs').textContent = data.protected_aps || 0;
-        
     } catch (error) {
         console.error('Error refreshing packet data:', error);
         if (!error.name === 'AbortError') {
@@ -552,3 +585,47 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('resize', () => {
     updateChart();
 });
+
+async function resolveAttack(attackId) {
+    try {
+        const response = await fetch(`/resolve_attack/${attackId}`, {
+            method: 'PUT',
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to resolve attack');
+        }
+        
+        const data = await response.json();
+        
+        // Show notification if notification system exists
+        if (typeof notificationSystem !== 'undefined') {
+            notificationSystem.show(
+                `${data.msg}`,
+                'success'
+            );
+        }
+        
+        // Remove the row from the table
+        const row = document.querySelector(`tr[data-attack-id="${attackId}"]`);
+        if (row) {
+            row.remove();
+        }
+        
+    } catch (error) {
+        console.error('Error resolving attack:', error);
+        if (typeof notificationSystem !== 'undefined') {
+            notificationSystem.show(
+                `Failed to resolve attack ID: ${attackId}`,
+                'warning'
+            );
+        }
+        
+        // Reset the toggle if resolution failed
+        const toggle = document.querySelector(`.attack-resolve-toggle[data-attack-id="${attackId}"]`);
+        if (toggle) {
+            toggle.checked = false;
+        }
+    }
+}

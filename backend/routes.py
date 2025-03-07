@@ -114,11 +114,17 @@ def get_packets():
         "threats": len(attack_list)
     })
 
-# @views.put('/resolve_attack/<int:id>')
-# @jwt_required
-# def resolve_attack(id):
-#     data = request.json()
+@views.put('/resolve_attack/<int:id>')
+@jwt_required()
+def resolve_attack(id):
+    attack = Attack.query.filter_by(id=id).first()
+    if not attack:
+        return jsonify({'msg': 'Attack not found'}), 404
+    
+    attack.resolved = True
+    DB.session.commit()
 
+    return jsonify({'msg':'Attack resolved'}),200
 
 @views.get('/system-stats')
 @jwt_required()
