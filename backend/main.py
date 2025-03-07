@@ -8,12 +8,14 @@ from scapy.all import sniff
 from flask import Flask, redirect
 from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import logging, time
-from models import Attack
+from models import Attack, User
 from routes import views
 from data import BASE_DIR, DB, bcrypt, jwt, state
 from modules import detector, ap_scanner, probe_detector
 import subprocess
 from datetime import datetime, timezone
+import argparse
+import re
 
 def create_app():
     """Create and configure the Flask application"""
@@ -62,13 +64,109 @@ def create_app():
     
     return app
 
-def get_interface():
-    """Get the interface from the command line arguments"""
-    if len(sys.argv) > 1:
-        return sys.argv[1]
-    else:
-        print('No argument! Enter wlan interface')
-        exit()
+def get_password():
+    password = input("Enter password: ")
+            
+    # check for correct password
+    while True:
+        if len(password) <=8:
+            print("password should be longer that 8 characters")
+            exit()
+        elif not re.search("[a-z]", password):
+            print("The alphabet must be between a-z")
+            exit()
+        elif not re.search("[A-Z]", password):
+            print('At least one alphabet should be of Upper Case')
+            exit()
+        elif not re.search("[0-9]", password):
+            print('At least 1 number or digit between')
+            exit()
+        elif not re.search("[_@$]" , password):
+            print('At least 1 character from')
+            exit()
+        elif re.search(r"\s" , password):
+            print('No whitespace character')
+            exit()
+        else:
+            return password
+
+interface = ''
+def arguments_handler():
+    """ handle different arguments from user"""
+    try:
+        global interface
+        # Initialize parser
+        parser = argparse.ArgumentParser()
+
+        # Adding optional argument
+        parser.add_argument("-c", "--Create", help = "add new user")
+        parser.add_argument("-u", "--Update", help = "update user password")
+        parser.add_argument("-d", "--Delete", help = "Delete user")
+        parser.add_argument("-i", "--Interface", help = "Add wlan interface to work with")
+
+        # Read arguments from command line
+        args = parser.parse_args()
+
+        # check wich arguments written
+        if args.Create:
+            username = args.Create
+
+            if len(args.Create) <=8:
+                print('Username should be longer then 8 letters')
+                exit()
+            elif User.query.filter_by(username=username).first():
+                print('This username already exist')
+                exit()
+            
+            password = get_password()
+
+            hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+            new_user = User(username=username, password=hashed_password)
+
+            DB.session.add(new_user)
+            DB.session.commit()
+            print('Added new user')
+            exit()
+
+        elif args.Update:
+
+            username = args.Update
+            old_password = input("Enter your existing password to update it: ")
+
+            user = User.query.filter_by(username=username).first()
+
+            if user and bcrypt.check_password_hash(user.password, old_password):
+                new_password = input('Enter new passowrd: ')
+                hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+
+                updated_user = User(username=username, password=hashed_password)
+                DB.session.add(updated_user)
+                DB.session.commit()
+                print('Updated new user')
+            exit()
+
+        elif args.Delete:
+            username = args.Delete
+            password = input("Enter your password: ")
+
+            user = User.query.filter_by(username=username).first()
+
+            if user and bcrypt.check_password_hash(user.password, password):
+                User.query.filter_by(username=username).delete()
+                DB.session.commit()
+                print('User deleted')
+            else:
+                print('there is an error username or password is wrong')
+            exit()
+
+        elif args.Interface:
+            interface = args.Interface
+        elif not args.Interface:
+            print('Enter wlan interface to work with')
+            sys.exit(1)
+
+    except argparse.ArgumentError as e:
+        print('Catching an argumentError, ' + e)
 
 def to_monitor(interface):
     """Put the interface in monitor mode"""
@@ -196,7 +294,6 @@ def packet_handler(packet):
     is_prob_scanner(packet)
     ap_scanner.process_beacon(packet)
 
-
 def start_sniffing(interface):
     """Start the packet sniffing on the specified interface"""
     try:
@@ -214,12 +311,11 @@ def start_sniffing(interface):
         print(f"Error starting sniffing: {e}")
 
 if __name__ == '__main__':
-    interface = get_interface()
-    print(f"Selected Interface: {interface}")
     
     app = create_app()
     with app.app_context():
         DB.create_all()
+        arguments_handler()
     
     logging.basicConfig(
         level=logging.INFO,
