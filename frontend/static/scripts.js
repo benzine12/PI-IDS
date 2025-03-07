@@ -429,7 +429,7 @@ async function refreshPacketData() {
                 td.textContent = content;
                 return td;
             };
-
+            row.appendChild(createCell(packet.id));
             row.appendChild(createCell(packet.src_mac));
             row.appendChild(createCell(packet.dst_mac));
             row.appendChild(createCell(packet.essid));
