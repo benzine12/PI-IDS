@@ -16,6 +16,7 @@ import subprocess
 from datetime import datetime, timezone
 import argparse
 import re
+from collections import defaultdict
 
 interface = ''
 
@@ -289,72 +290,95 @@ def is_prob_scanner(packet):
     return False
 
 def is_rogue_ap(packet):
-    if not packet.haslayer(Dot11Beacon) or not packet.haslayer(Dot11ProbeResp):
-        return False
-    try:
-        dot11 = packet[Dot11]
-        bssid = dot11.addr3
-        stats = packet[Dot11Beacon].network_stats()
-        
-        essid = stats.get("ssid")
-        crypto = stats.get("crypto", set())
-
-        if not essid:
+    """
+    Detects rogue APs and karma attacks by checking for:
+    1. Same ESSID as protected AP but different crypto (rogue AP)
+    2. Same ESSID, different crypto AND lots of probe responses (karma attack)
+    """
+    
+    # Initialize the probe response counter if it doesn't exist
+    if not hasattr(state, 'probe_resp_counter'):
+        state.probe_resp_counter = defaultdict(int)
+    
+    # Track probe responses by BSSID
+    if packet.haslayer(Dot11ProbeResp):
+        try:
+            dot11 = packet[Dot11]
+            bssid = dot11.addr3
+            state.probe_resp_counter[bssid] += 1
+            return False  # Continue processing other packets
+        except Exception as e:
+            logging.error(f"Error processing probe response: {e}")
             return False
-        
-        protected_aps = AP.query.filter_by(essid=essid).all()
+    
+    # Check for rogue APs via beacon frames
+    if packet.haslayer(Dot11Beacon):
+        try:
+            dot11 = packet[Dot11]
+            bssid = dot11.addr3
+            stats = packet[Dot11Beacon].network_stats()
+            
+            essid = stats.get("ssid")
+            crypto = stats.get("crypto", set())
 
-        if not protected_aps:
-            return False
+            if not essid:
+                return False
+            
+            protected_aps = AP.query.filter_by(essid=essid).all()
 
-        for p_ap in protected_aps:
-            p_crypto = p_ap.crypto.split(',') if isinstance(p_ap.crypto, str) else p_ap.crypto
+            if not protected_aps:
+                return False
 
-            if p_ap.essid == essid and str(p_crypto) != str(crypto):
+            for p_ap in protected_aps:
+                p_crypto = p_ap.crypto.split(',') if isinstance(p_ap.crypto, str) else p_ap.crypto
 
-                probe_resp_count = state.probe_resp_counter.get(bssid, 0)
-                karma_threshold = 20  # minimum probe responce to trigger karma attack
-                
-                attack_type = "Karma Attack" if probe_resp_count >= karma_threshold else "Rogue AP"
-                
-                if attack_type == "Karma Attack":
-                    logging.warning(f"KARMA ATTACK DETECTED: ESSID={essid}, BSSID={bssid}, "
-                                    f"Crypto={crypto}, Expected Crypto={p_ap.crypto}, "
-                                    f"Probe Responses: {probe_resp_count}")
-                else:
-                    logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, "
-                                    f"Crypto={crypto}, Expected Crypto={p_ap.crypto}")
+                if p_ap.essid == essid and str(p_crypto) != str(crypto):
+                    # Get probe response count for this BSSID
+                    probe_resp_count = state.probe_resp_counter.get(bssid, 0)
+                    karma_threshold = 20  # minimum probe responses to trigger karma attack
+                    
+                    attack_type = "Karma Attack" if probe_resp_count >= karma_threshold else "Rogue AP"
+                    
+                    if attack_type == "Karma Attack":
+                        logging.warning(f"KARMA ATTACK DETECTED: ESSID={essid}, BSSID={bssid}, "
+                                       f"Crypto={crypto}, Expected Crypto={p_ap.crypto}, "
+                                       f"Probe Responses: {probe_resp_count}")
+                    else:
+                        logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, "
+                                       f"Crypto={crypto}, Expected Crypto={p_ap.crypto}")
 
-                attack_time = datetime.now(timezone.utc)
-                existing = Attack.query.filter_by(
-                            attack_type= attack_type,
+                    attack_time = datetime.now(timezone.utc)
+                    existing = Attack.query.filter_by(
+                                attack_type=attack_type,
+                                bssid=bssid,
+                                essid=essid
+                            ).first()
+                    if existing:
+                        existing.count += 1
+                        existing.last_seen = attack_time
+                    else:
+                        new_attack = Attack(
+                            attack_type=attack_type,
+                            src_mac=bssid, 
+                            dst_mac="Broadcast",
+                            essid=essid,
                             bssid=bssid,
-                            essid=essid
-                        ).first()
-                if existing:
-                    existing.count += 1
-                    existing.last_seen = attack_time
-                else:
-                    new_attack = Attack(
-                        attack_type=attack_type,
-                        src_mac=bssid, 
-                        dst_mac="Broadcast",
-                        essid=essid,
-                        bssid=bssid,
-                        channel=stats.get("channel", "N/A"),
-                        signal_strength=getattr(packet, 'dBm_AntSignal', 'N/A'),
-                        count=1
-                    )
-                    DB.session.add(new_attack)
-                
-                DB.session.commit()
-                return True      
+                            channel=stats.get("channel", "N/A"),
+                            signal_strength=getattr(packet, 'dBm_AntSignal', 'N/A'),
+                            count=1
+                        )
+                        DB.session.add(new_attack)
+                    
+                    DB.session.commit()
+                    return True      
 
-        return False
+            return False
 
-    except Exception as e:
-        logging.error(f"Error in rogue AP detection: {e}")
-        return False
+        except Exception as e:
+            logging.error(f"Error in rogue AP detection: {e}")
+            return False
+    
+    return False
 
 def packet_handler(packet):
     """Handle the packets received by the sniffer"""
