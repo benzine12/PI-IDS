@@ -1,4 +1,4 @@
-from scapy.layers.dot11 import Dot11Beacon, Dot11, RadioTap,Dot11Deauth,Dot11ProbeResp,Dot11ProbeReq
+from scapy.layers.dot11 import Dot11Beacon, Dot11, RadioTap,Dot11Deauth,Dot11ProbeReq
 import logging
 from collections import defaultdict
 import time

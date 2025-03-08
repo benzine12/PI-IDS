@@ -6,7 +6,7 @@ from datetime import timedelta
 from flask_cors import CORS
 from scapy.all import sniff
 from flask import Flask, redirect
-from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap,Dot11Beacon
+from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap,Dot11Beacon,Dot11ProbeResp
 import logging, time
 from models import AP, Attack, User
 from routes import views
@@ -289,7 +289,7 @@ def is_prob_scanner(packet):
     return False
 
 def is_rogue_ap(packet):
-    if not packet.haslayer(Dot11Beacon):
+    if not packet.haslayer(Dot11Beacon) or not packet.haslayer(Dot11ProbeResp):
         return False
     try:
         dot11 = packet[Dot11]
@@ -311,12 +311,23 @@ def is_rogue_ap(packet):
             p_crypto = p_ap.crypto.split(',') if isinstance(p_ap.crypto, str) else p_ap.crypto
 
             if p_ap.essid == essid and str(p_crypto) != str(crypto):
-                logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, " 
-                               f"Crypto={crypto}, Expected Crypto={p_ap.crypto}")
+
+                probe_resp_count = state.probe_resp_counter.get(bssid, 0)
+                karma_threshold = 20  # minimum probe responce to trigger karma attack
+                
+                attack_type = "Karma Attack" if probe_resp_count >= karma_threshold else "Rogue AP"
+                
+                if attack_type == "Karma Attack":
+                    logging.warning(f"KARMA ATTACK DETECTED: ESSID={essid}, BSSID={bssid}, "
+                                    f"Crypto={crypto}, Expected Crypto={p_ap.crypto}, "
+                                    f"Probe Responses: {probe_resp_count}")
+                else:
+                    logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, "
+                                    f"Crypto={crypto}, Expected Crypto={p_ap.crypto}")
 
                 attack_time = datetime.now(timezone.utc)
                 existing = Attack.query.filter_by(
-                            attack_type="Rogue AP",
+                            attack_type= attack_type,
                             bssid=bssid,
                             essid=essid
                         ).first()
@@ -325,9 +336,9 @@ def is_rogue_ap(packet):
                     existing.last_seen = attack_time
                 else:
                     new_attack = Attack(
-                        attack_type="Rogue AP",
-                        src_mac=bssid,  # Using BSSID as the source
-                        dst_mac="Broadcast",  # Rogue APs target everyone
+                        attack_type=attack_type,
+                        src_mac=bssid, 
+                        dst_mac="Broadcast",
                         essid=essid,
                         bssid=bssid,
                         channel=stats.get("channel", "N/A"),
