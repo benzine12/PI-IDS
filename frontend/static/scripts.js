@@ -469,7 +469,6 @@ function refreshPacketData() {
             });
 
             document.getElementById('detectedThreats').textContent = data.threats || 0;
-            document.getElementById('activeConnections').textContent = data.active_connections || 0;
             document.getElementById('protectedAPs').textContent = data.protected_aps || 0;
             
         })
