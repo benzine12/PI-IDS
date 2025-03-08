@@ -6,9 +6,9 @@ from datetime import timedelta
 from flask_cors import CORS
 from scapy.all import sniff
 from flask import Flask, redirect
-from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
+from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap,Dot11Beacon
 import logging, time
-from models import Attack, User
+from models import AP, Attack, User
 from routes import views
 from data import BASE_DIR, DB, bcrypt, jwt, state
 from modules import detector, ap_scanner, probe_detector
@@ -288,12 +288,70 @@ def is_prob_scanner(packet):
         logging.error(f"Error processing packet in is_prob_scanner: {e}")
     return False
 
+def is_rogue_ap(packet):
+    if not packet.haslayer(Dot11Beacon):
+        return False
+    try:
+        dot11 = packet[Dot11]
+        bssid = dot11.addr3
+        stats = packet[Dot11Beacon].network_stats()
+        
+        essid = stats.get("ssid")
+        crypto = stats.get("crypto", set())
+
+        if not essid:
+            return False
+        
+        protected_aps = AP.query.filter_by(essid=essid).all()
+
+        if not protected_aps:
+            return False
+
+        for p_ap in protected_aps:
+            p_crypto = p_ap.crypto.split(',') if isinstance(p_ap.crypto, str) else p_ap.crypto
+
+            if p_ap.essid == essid and str(p_crypto) != str(crypto):
+                logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, " 
+                               f"Crypto={crypto}, Expected Crypto={p_ap.crypto}")
+
+                attack_time = datetime.now(timezone.utc)
+                existing = Attack.query.filter_by(
+                            attack_type="Rogue AP",
+                            bssid=bssid,
+                            essid=essid
+                        ).first()
+                if existing:
+                    existing.count += 1
+                    existing.last_seen = attack_time
+                else:
+                    new_attack = Attack(
+                        attack_type="Rogue AP",
+                        src_mac=bssid,  # Using BSSID as the source
+                        dst_mac="Broadcast",  # Rogue APs target everyone
+                        essid=essid,
+                        bssid=bssid,
+                        channel=stats.get("channel", "N/A"),
+                        signal_strength=getattr(packet, 'dBm_AntSignal', 'N/A'),
+                        count=1
+                    )
+                    DB.session.add(new_attack)
+                
+                DB.session.commit()
+                return True      
+
+        return False
+
+    except Exception as e:
+        logging.error(f"Error in rogue AP detection: {e}")
+        return False
+
 def packet_handler(packet):
     """Handle the packets received by the sniffer"""
     state.packet_counter += 1
     is_deauth(packet)
     is_prob_scanner(packet)
     ap_scanner.process_beacon(packet)
+    is_rogue_ap(packet)
 
 def start_sniffing(interface):
     """Start the packet sniffing on the specified interface"""
