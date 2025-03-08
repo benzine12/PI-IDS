@@ -1,4 +1,4 @@
-from scapy.layers.dot11 import Dot11Beacon, Dot11, RadioTap,Dot11Deauth,Dot11ProbeResp,Dot11ProbeReq
+from scapy.layers.dot11 import Dot11Beacon, Dot11, RadioTap,Dot11Deauth,Dot11ProbeReq
 import logging
 from collections import defaultdict
 import time
@@ -29,14 +29,14 @@ class DeauthDetector:
                 return True
         return False
 
-detector = DeauthDetector()
+deauth_detector = DeauthDetector()
 
 class APScanner:
 
     """Class to scan for APs and extract information from beacon frames"""
-    def __init__(self):
+    def __init__(self,threshold=15,unique_ssids_threshold=5):
         self.detected_aps = {}
-        
+ 
     def process_beacon(self, packet):
         """Process beacon frames to extract AP information"""
         if not packet.haslayer(Dot11Beacon):
@@ -105,7 +105,7 @@ class APScanner:
         # and the signal strenght is not the same
         # its rogue ap
         pass
-
+        
 ap_scanner = APScanner()
 
 class ProbeScannerDetector:
@@ -226,3 +226,87 @@ class ProbeScannerDetector:
                 len(unique_ssids) >= self.unique_ssids_threshold)
     
 probe_detector = ProbeScannerDetector()
+
+class BeaconSpamDetector:
+    def __init__(self, time_window=60, threshold=20):
+        self.detected_aps = {}
+        self.beacon_timestamps = defaultdict(list)  # BSSID -> list of timestamps
+        self.time_window = time_window
+        self.threshold = threshold
+        
+    def update_ap_info(self, bssid, ap_info):
+        """Update access point information for a BSSID"""
+        self.detected_aps[bssid] = ap_info
+        
+    def track_beacon(self, packet):
+        """Track beacon frames for spam detection"""
+        if not packet.haslayer(Dot11Beacon):
+            return False
+            
+        try:
+            bssid = packet[Dot11].addr3
+            current_time = time.time()
+            
+            # Add timestamp to the list for this BSSID
+            self.beacon_timestamps[bssid].append(current_time)
+            
+            # Periodically clean up old timestamps (keep last 5 minutes)
+            if len(self.beacon_timestamps[bssid]) % 100 == 0:  # Every 100 beacons
+                self.beacon_timestamps[bssid] = [t for t in self.beacon_timestamps[bssid] 
+                                              if current_time - t <= 300]  # 5 minutes
+            
+            return True
+        except Exception as e:
+            logging.error(f"Error tracking beacon: {e}")
+            return False
+    
+    def check_for_beacon_spam(self):
+        """
+        Detect beacon frame spamming based on beacon frequency.
+        
+        Returns:
+            list: List of dictionaries containing information about detected beacon spammers
+        """
+        current_time = time.time()
+        spam_results = []
+        
+        for bssid, timestamps in self.beacon_timestamps.items():
+            # Count beacons in the time window
+            recent_beacons = [t for t in timestamps if current_time - t <= self.time_window]
+            count = len(recent_beacons)
+            
+            # Check if count exceeds threshold
+            if count >= self.threshold:
+                # Get AP info if available
+                ap_info = self.detected_aps.get(bssid, {})
+                essid = ap_info.get('essid', 'Unknown')
+                channel = ap_info.get('channel', 'Unknown')
+                signal = ap_info.get('signal_strength', 'N/A')
+                
+                logging.warning(f"Beacon spam detected! BSSID: {bssid}, ESSID: {essid}, "
+                              f"Count: {count} beacons in {self.time_window}s")
+                
+                spam_results.append({
+                    "bssid": bssid,
+                    "essid": essid,
+                    "beacon_count": count,
+                    "time_window": self.time_window,
+                    "channel": channel,
+                    "signal_strength": signal,
+                    "detection_time": time.strftime("%Y-%m-%d %H:%M:%S")
+                })
+        
+        return spam_results
+    
+    def cleanup_old_data(self):
+        """Remove old data to prevent memory leaks"""
+        current_time = time.time()
+        # Clean up timestamps older than 10 minutes
+        for bssid in list(self.beacon_timestamps.keys()):
+            self.beacon_timestamps[bssid] = [t for t in self.beacon_timestamps[bssid] 
+                                          if current_time - t <= 600]  # 10 minutes
+            # Remove entry if empty
+            if not self.beacon_timestamps[bssid]:
+                del self.beacon_timestamps[bssid]
+
+beacon_spam_detector = BeaconSpamDetector()

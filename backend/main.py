@@ -6,12 +6,12 @@ from datetime import timedelta
 from flask_cors import CORS
 from scapy.all import sniff
 from flask import Flask, redirect
-from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
+from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap,Dot11Beacon
 import logging, time
 from models import Attack, User
 from routes import views
 from data import BASE_DIR, DB, bcrypt, jwt, state
-from modules import detector, ap_scanner, probe_detector
+from modules import deauth_detector, ap_scanner, probe_detector,beacon_spam_detector
 import subprocess
 from datetime import datetime, timezone
 import argparse
@@ -184,7 +184,7 @@ def is_deauth(packet):
             dot11 = packet[Dot11]
             
             # pass the packet to detector to check if it matches the pattern
-            if not detector.detect_pattern(packet):
+            if not deauth_detector.detect_pattern(packet):
                 return False
             
             # get the signal strength
@@ -288,12 +288,84 @@ def is_prob_scanner(packet):
         logging.error(f"Error processing packet in is_prob_scanner: {e}")
     return False
 
+def is_beacon_spam(packet):
+    """Check if the packet is part of a beacon spam attack and save it to the database"""
+    try:
+        # Track all beacon frames
+        if not beacon_spam_detector.track_beacon(packet):
+            return False
+            
+        if not packet.haslayer(Dot11Beacon):
+            return False
+        
+        # Get the BSSID
+        bssid = packet[Dot11].addr3
+        
+        # Update AP info in the beacon spam detector
+        if bssid in ap_scanner.detected_aps:
+            beacon_spam_detector.update_ap_info(bssid, ap_scanner.detected_aps[bssid])
+        
+        # Check for spam (this will only return results when threshold is exceeded)
+        spam_results = beacon_spam_detector.check_for_beacon_spam()
+        
+        if not spam_results:
+            return False
+            
+        # Process each detected spam result
+        for result in spam_results:
+            if result["bssid"] == bssid:
+                # Get necessary information for attack record
+                essid = result["essid"]
+                signal_strength = result["signal_strength"]
+                channel = result["channel"]
+                count = result["beacon_count"]
+                
+                attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Update attack count in state manager
+                state.attack_log[bssid].append(time.time())
+                state.attack_counts[bssid] += 1
+                
+                logging.warning(f"Beacon Spam attack detected from {bssid} ({essid}) at {attack_time}")
+                
+                # Save to database
+                with app.app_context():
+                    existing = Attack.query.filter_by(
+                        attack_type="Beacon Spam",
+                        src_mac=bssid
+                    ).first()
+                    
+                    if existing:
+                        existing.count = count
+                        existing.last_seen = datetime.now(timezone.utc)
+                        existing.signal_strength = signal_strength
+                    else:
+                        new_attack = Attack(
+                            attack_type="Beacon Spam",
+                            src_mac=bssid,
+                            essid=essid,
+                            channel=channel,
+                            signal_strength=signal_strength,
+                            count=count
+                        )
+                        DB.session.add(new_attack)
+                    
+                    DB.session.commit()
+                
+                return True
+                
+    except Exception as e:
+        logging.error(f"Error processing packet in is_beacon_spam: {e}")
+    
+    return False
+
 def packet_handler(packet):
     """Handle the packets received by the sniffer"""
     state.packet_counter += 1
     is_deauth(packet)
     is_prob_scanner(packet)
     ap_scanner.process_beacon(packet)
+
 
 def start_sniffing(interface):
     """Start the packet sniffing on the specified interface"""
