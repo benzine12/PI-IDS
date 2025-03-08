@@ -323,55 +323,61 @@ def is_rogue_ap(packet):
 
             if not essid:
                 return False
-            
-            protected_aps = AP.query.filter_by(essid=essid).all()
-
-            if not protected_aps:
-                return False
-
-            for p_ap in protected_aps:
-                p_crypto = p_ap.crypto.split(',') if isinstance(p_ap.crypto, str) else p_ap.crypto
-
-                if p_ap.essid == essid and str(p_crypto) != str(crypto):
-                    # Get probe response count for this BSSID
-                    probe_resp_count = state.probe_resp_counter.get(bssid, 0)
-                    karma_threshold = 20  # minimum probe responses to trigger karma attack
+                
+            with app.app_context():
+                # Check for protected APs with this ESSID
+                protected_aps = AP.query.filter_by(essid=essid).all()
+                
+                if not protected_aps:
+                    return False
+                
+                for p_ap in protected_aps:
+                    p_crypto = p_ap.crypto.split(',') if isinstance(p_ap.crypto, str) else p_ap.crypto
                     
-                    attack_type = "Karma Attack" if probe_resp_count >= karma_threshold else "Rogue AP"
-                    
-                    if attack_type == "Karma Attack":
-                        logging.warning(f"KARMA ATTACK DETECTED: ESSID={essid}, BSSID={bssid}, "
-                                       f"Crypto={crypto}, Expected Crypto={p_ap.crypto}, "
-                                       f"Probe Responses: {probe_resp_count}")
-                    else:
-                        logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, "
-                                       f"Crypto={crypto}, Expected Crypto={p_ap.crypto}")
+                    p_crypto_normalized = set(p_crypto) if isinstance(p_crypto, list) else {p_crypto}
+                    crypto_normalized = set(crypto) if isinstance(crypto, set) else {crypto}
+                
+                    # Check for same ESSID but different BSSID or different crypto
+                    if p_ap.essid == essid and (p_ap.bssid != bssid or p_crypto_normalized != crypto_normalized):
+                        # Get probe response count for this BSSID
+                        probe_resp_count = state.probe_resp_counter.get(bssid, 0)
+                        karma_threshold = 20  # minimum probe responses to trigger karma attack
+                        
+                        attack_type = "Karma Attack" if probe_resp_count >= karma_threshold else "Rogue AP"
+                        
+                        if attack_type == "Karma Attack":
+                            logging.warning(f"KARMA ATTACK DETECTED: ESSID={essid}, BSSID={bssid}, "
+                                        f"Crypto={crypto}, Protected BSSID={p_ap.bssid}, Protected Crypto={p_ap.crypto}, "
+                                        f"Probe Responses: {probe_resp_count}")
+                        else:
+                            logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, "
+                                        f"Crypto={crypto}, Protected BSSID={p_ap.bssid}, Protected Crypto={p_ap.crypto}")
 
-                    attack_time = datetime.now(timezone.utc)
-                    existing = Attack.query.filter_by(
+                        attack_time = datetime.now(timezone.utc)
+                        existing = Attack.query.filter_by(
+                                    attack_type=attack_type,
+                                    bssid=bssid,
+                                    essid=essid
+                                ).first()
+                        if existing:
+                            existing.count += 1
+                            existing.last_seen = attack_time
+                        else:
+                            new_attack = Attack(
                                 attack_type=attack_type,
+                                src_mac=bssid, 
+                                dst_mac="Broadcast",
+                                essid=essid,
                                 bssid=bssid,
-                                essid=essid
-                            ).first()
-                    if existing:
-                        existing.count += 1
-                        existing.last_seen = attack_time
-                    else:
-                        new_attack = Attack(
-                            attack_type=attack_type,
-                            src_mac=bssid, 
-                            dst_mac="Broadcast",
-                            essid=essid,
-                            bssid=bssid,
-                            channel=stats.get("channel", "N/A"),
-                            signal_strength=getattr(packet, 'dBm_AntSignal', 'N/A'),
-                            count=1
-                        )
-                        DB.session.add(new_attack)
-                    
-                    DB.session.commit()
-                    return True      
-
+                                channel=stats.get("channel", "N/A"),
+                                signal_strength=getattr(packet, 'dBm_AntSignal', 'N/A'),
+                                count=1
+                            )
+                            DB.session.add(new_attack)
+                        
+                        DB.session.commit()
+                        return True
+            
             return False
 
         except Exception as e:
