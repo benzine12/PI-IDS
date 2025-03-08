@@ -89,9 +89,9 @@ def get_packets():
     """Get the detected packets"""
     # Get recent attacks from database
     attacks = Attack.query.order_by(Attack.last_seen.desc()).filter_by(resolved=False).limit(100).all()
-    
-    # Convert to serializable format
+    protected_aps = len(protected_aps = AP.query.all())
     attack_list = []
+    
     for attack in attacks:
         attack_dict = {
             "id":attack.id,
@@ -107,11 +107,12 @@ def get_packets():
             "reason_code": "7" if attack.attack_type == "Deauth" else ""
         }
         attack_list.append(attack_dict)
-    
+
     return jsonify({
         "detected_attacks": attack_list,
         "total_packets": state.packet_counter,
-        "threats": len(attack_list)
+        "threats": len(attack_list),
+        "protected_aps":protected_aps
     })
 
 @views.put('/resolve_attack/<int:id>')
