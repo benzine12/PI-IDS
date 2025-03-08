@@ -89,7 +89,7 @@ def get_packets():
     """Get the detected packets"""
     # Get recent attacks from database
     attacks = Attack.query.order_by(Attack.last_seen.desc()).filter_by(resolved=False).limit(100).all()
-    protected_aps = len(protected_aps = AP.query.all())
+    protected_aps = len(AP.query.all())
     attack_list = []
     
     for attack in attacks:
