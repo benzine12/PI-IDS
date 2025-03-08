@@ -7,6 +7,21 @@ const CONFIG = {
         PACKETS: '/packets'
     }
 };
+// Initialize username from localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    const username = localStorage.getItem('wids_username');
+    const usernameDisplay = document.getElementById('username-display');
+    const userInitials = document.getElementById('user-initials');
+    
+    if (username) {
+        // Update the displayed username
+        usernameDisplay.textContent = username;
+        
+        // Update initials (first letter of username)
+        const initials = username.charAt(0).toUpperCase();
+        userInitials.textContent = initials;
+    }
+});
 
 // Network Status Management flag
 let isServerConnected = false;
