@@ -1,4 +1,3 @@
-# data.py
 from collections import defaultdict
 import os
 from flask_jwt_extended import JWTManager
