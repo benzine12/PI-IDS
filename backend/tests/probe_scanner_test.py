@@ -103,6 +103,7 @@ def setup_virtual_env():
 
 
 if __name__ == "__main__":
+    setup_virtual_env()
     if len(sys.argv) < 2:
         print(f"Usage: sudo python3 {sys.argv[0]} <interface> [number_of_probes] [delay]")
         sys.exit(1)
