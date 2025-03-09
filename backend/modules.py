@@ -162,7 +162,6 @@ class ProbeScannerDetector:
                     
                     # Log the detection
                     attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
-                    logging.warning(f"Probe scanner detected from {src_mac} at {attack_time}")
                     
                     # Return detection information
                     return {
@@ -277,9 +276,6 @@ class BeaconSpamDetector:
                 essid = ap_info.get('essid', 'Unknown')
                 channel = ap_info.get('channel', 'Unknown')
                 signal = ap_info.get('signal_strength', 'N/A')
-                
-                logging.warning(f"Beacon spam detected! BSSID: {bssid}, ESSID: {essid}, "
-                              f"Count: {count} beacons in {self.time_window}s")
                 
                 spam_results.append({
                     "bssid": bssid,

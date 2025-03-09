@@ -196,7 +196,7 @@ def set_to_protected():
 
             DB.session.add(add_ap)
             DB.session.commit()
-            logging.warning(f"Added new AP: BSSID={data['bssid']}, ESSID={data['essid']}")
+            logging.INFO(f"Added new AP: BSSID={data['bssid']}, ESSID={data['essid']}")
             return jsonify({"msg": "AP added successfully"}), 201
 
 @views.post('/remove_from_protected')
@@ -227,5 +227,5 @@ def remove_from_protected():
         DB.session.delete(ap)
         DB.session.commit()
         
-        logging.warning(f"Removed AP from protected list: BSSID={data['bssid']}, ESSID={essid}")
+        logging.INFO(f"Removed AP from protected list: BSSID={data['bssid']}, ESSID={essid}")
         return jsonify({"msg": "AP removed from protected list successfully"}), 200
