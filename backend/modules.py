@@ -34,7 +34,7 @@ deauth_detector = DeauthDetector()
 class APScanner:
 
     """Class to scan for APs and extract information from beacon frames"""
-    def __init__(self,threshold=15,unique_ssids_threshold=5):
+    def __init__(self):
         self.detected_aps = {}
  
     def process_beacon(self, packet):
@@ -104,13 +104,7 @@ ap_scanner = APScanner()
 class ProbeScannerDetector:
     """Class to detect unusual probe request scanning activity"""
     def __init__(self, time_window=30, threshold=15, unique_ssids_threshold=5):
-        """Initialize the probe scanner detector.
-        
-        Args:
-            time_window (int): Time window in seconds to analyze probe requests
-            threshold (int): Number of probe requests within time window to trigger detection
-            unique_ssids_threshold (int): Minimum number of unique SSIDs requested to consider it scanning
-        """
+
         self.time_window = time_window
         self.threshold = threshold
         self.unique_ssids_threshold = unique_ssids_threshold
@@ -190,19 +184,6 @@ class ProbeScannerDetector:
         ]
     
     def is_scanning(self, mac, current_time):
-        """Determine if a MAC address is exhibiting scanning behavior.
-        
-        A MAC is considered to be scanning if:
-        1. It has sent more probe requests than the threshold within the time window
-        2. It has requested more unique SSIDs than the unique SSIDs threshold
-        
-        Args:
-            mac (str): MAC address to check
-            current_time (float): Current timestamp
-            
-        Returns:
-            bool: True if scanning detected, False otherwise
-        """
         # Get probes within the time window
         probes = [p for p in self.probe_history[mac] 
                 if current_time - p[0] <= self.time_window]
@@ -253,12 +234,6 @@ class BeaconSpamDetector:
             return False
     
     def check_for_beacon_spam(self):
-        """
-        Detect beacon frame spamming based on beacon frequency.
-        
-        Returns:
-            list: List of dictionaries containing information about detected beacon spammers
-        """
         current_time = time.time()
         spam_results = []
         

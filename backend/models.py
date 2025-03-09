@@ -1,4 +1,3 @@
-# models.py
 from datetime import datetime, timezone
 from data import DB
 

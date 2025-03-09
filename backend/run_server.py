@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 
-def setup_virtual_env():
+def main():
     
     # Check if the env folder exists and delete it if present
     if os.path.exists("env"):
@@ -25,4 +25,4 @@ def setup_virtual_env():
     subprocess.run(["sudo", f"./env/bin/python", "main.py","-i", "wlan1"], check=True)
 
 if __name__ == "__main__":
-    setup_virtual_env()
+    main()

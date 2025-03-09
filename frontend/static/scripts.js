@@ -215,7 +215,7 @@ class NotificationHandler {
     constructor() {
         this.acknowledgedThreats = new Set(this.loadAcknowledgedThreats());
         this.lastThreatCount = 0;
-        this.attackCountNotifications = {};  // Track attack counts for notifications
+        this.attackCountNotifications = {}; 
         this.restoreNavbarNotifications();
         this.setupNotificationSystem();
     }
@@ -328,7 +328,6 @@ class NotificationHandler {
         }
     }
 
-    // Modified to also store attack count notifications
     saveAttackCountNotifications() {
         try {
             localStorage.setItem('attackCountNotifications', 
@@ -374,9 +373,6 @@ class NotificationHandler {
             // Get last notified count
             const lastNotifiedCount = this.attackCountNotifications[targetMAC] || 0;
             
-            // Only show notification if:
-            // 1. It's the initial detection, OR
-            // 2. It's a multiple of 10 AND we haven't already notified for this specific count
             if (isInitialDetection || (isMultipleOfTen && lastNotifiedCount < currentCount)) {
                 notificationSystem.show(
                     `Detected attack from ${threat.src_mac} to ${threat.dst_mac} (${threat.attack_type})`,

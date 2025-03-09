@@ -1,5 +1,3 @@
-// notification-system.js - Clean version with all unused code removed
-
 class NotificationSystem {
     constructor() {
         // Initialize toast container

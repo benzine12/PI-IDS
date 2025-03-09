@@ -173,14 +173,7 @@ def arguments_handler():
 def channel_hopper(interface):
     """Hops between wireless channels to scan all networks (2.4GHz & 5GHz)"""
     
-    # 2.4GHz channels
-    channels_2ghz = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-    
-    # 5GHz channels (non-radar channels first)
-    channels_5ghz = [36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140]
-    
-    # Combine all channels
-    all_channels = channels_2ghz + channels_5ghz
+    all_channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140]
     
     def hop_channels():
         while True:
@@ -324,12 +317,6 @@ def is_prob_scanner(packet):
     return False
 
 def is_rogue_ap(packet):
-    """
-    Detects rogue APs and karma attacks by checking for:
-    1. Same ESSID as protected AP but different crypto (rogue AP)
-    2. Same ESSID, different crypto AND lots of probe responses (karma attack)
-    3. Uses OUI (first 8 digits of BSSID) comparison for better detection
-    """
     
     # Initialize the probe response counter if it doesn't exist
     if not hasattr(state, 'probe_resp_counter'):

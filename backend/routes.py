@@ -1,4 +1,3 @@
-# routes.py - Updated with protected AP management
 import logging
 from flask import Blueprint, jsonify, redirect, render_template, request
 from flask_jwt_extended import create_access_token, jwt_required
@@ -32,7 +31,6 @@ def login():
 
         if user and bcrypt.check_password_hash(user.password, password):
             access_token = create_access_token(identity=str(user.id))
-            # refresh_token = create_refresh_token(identity=username)
             return jsonify({"msg": "Welcome back, commander!",
                         "access_token": access_token}), 200
 

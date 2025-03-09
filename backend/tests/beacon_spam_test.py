@@ -4,7 +4,6 @@ import time
 import random
 from scapy.all import sendp, RadioTap, Dot11, Dot11Beacon, Dot11Elt
 
-# Some fake network names to use in beacon frames
 FAKE_NETWORKS = [
     "FreeWiFi", "PublicHotspot", "Guest_Network", "Airport_WiFi", 
     "CoffeeShop", "Hotel_Guest", "Default_SSID", "OpenNetwork", 
@@ -21,12 +20,6 @@ def generate_random_mac():
 def send_beacon_frames(interface, num_beacons=100, delay=0.05, duration=30):
     """
     Send multiple beacon frames to simulate a beacon flooding attack.
-    
-    Args:
-        interface: Wireless interface in monitor mode
-        num_beacons: Number of beacon frames to send
-        delay: Delay between beacon frames in seconds
-        duration: How long to run the attack in seconds
     """
     # Use the same source MAC for all beacons to trigger detection
     src_mac = generate_random_mac()

@@ -1,4 +1,3 @@
-// login.py
 document
   .getElementById("login-btn")
   .addEventListener("click", async function () {

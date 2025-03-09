@@ -3,7 +3,6 @@ import time
 import random
 from scapy.all import sendp, RadioTap, Dot11, Dot11ProbeReq, Dot11Elt
 
-# Some fake network names to probe for
 FAKE_NETWORKS = [
     "LinkSys", "Netgear", "TP-Link", "Home_WiFi", "DLink",
     "FreeWiFi", "xfinitywifi", "AndroidAP", "iPhone", "Guest",
