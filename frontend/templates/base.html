@@ -142,16 +142,16 @@
                             <button onclick="toggleUserMenu()"
                                 class="flex items-center space-x-2 p-2 rounded-md text-gray-700 hover:bg-gray-100">
                                 <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
-                                    <span class="text-white text-sm font-semibold">JD</span>
+                                    <span id="user-initials" class="text-white text-sm font-semibold">JD</span>
                                 </div>
-                                <span class="hidden md:block">Admin</span>
+                                <span id="username-display" class="hidden md:block">Admin</span>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                             <div id="userMenuDropdown"
                                 class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200">
                                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                     id="signOutBtn">
-                                    <i id="signOutBtn" class="fas fa-sign-out-alt mr-2"></i> Sign out
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Sign out
                                 </a>
                             </div>
                         </div>

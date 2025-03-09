@@ -28,7 +28,8 @@ document
             return;
         }
         // Store the token in cookie using the correct property name
-        document.cookie = `access_token_cookie=${data.access_token}; path=/; max-age=3600; SameSite=Strict`;    
+        document.cookie = `access_token_cookie=${data.access_token}; path=/; max-age=3600; SameSite=Strict`;  
+        localStorage.setItem('wids_username', username);
     
         // Redirect to dashboard
         window.location.href = '/dashboard';

@@ -2,6 +2,8 @@ from scapy.layers.dot11 import Dot11Beacon, Dot11, RadioTap,Dot11Deauth,Dot11Pro
 import logging
 from collections import defaultdict
 import time
+from data import DB
+from models import AP
 
 class DeauthDetector:
     """ Class to detect deauth attacks """
@@ -99,13 +101,6 @@ class APScanner:
             "security": dict(security_count)
         }
 
-    def check_for_rogue_ap(self):
-        # if the bssid or essid the same as the as one of the list
-        # and the crypto is OPEN 
-        # and the signal strenght is not the same
-        # its rogue ap
-        pass
-        
 ap_scanner = APScanner()
 
 class ProbeScannerDetector:

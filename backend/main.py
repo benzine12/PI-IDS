@@ -6,9 +6,9 @@ from datetime import timedelta
 from flask_cors import CORS
 from scapy.all import sniff
 from flask import Flask, redirect
-from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap,Dot11Beacon
+from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap,Dot11Beacon,Dot11Beacon,Dot11ProbeResp
 import logging, time
-from models import Attack, User
+from models import AP, Attack, User
 from routes import views
 from data import BASE_DIR, DB, bcrypt, jwt, state
 from modules import deauth_detector, ap_scanner, probe_detector,beacon_spam_detector
@@ -16,6 +16,7 @@ import subprocess
 from datetime import datetime, timezone
 import argparse
 import re
+from collections import defaultdict
 
 interface = ''
 
@@ -288,6 +289,103 @@ def is_prob_scanner(packet):
         logging.error(f"Error processing packet in is_prob_scanner: {e}")
     return False
 
+def is_rogue_ap(packet):
+    """
+    Detects rogue APs and karma attacks by checking for:
+    1. Same ESSID as protected AP but different crypto (rogue AP)
+    2. Same ESSID, different crypto AND lots of probe responses (karma attack)
+    """
+    
+    # Initialize the probe response counter if it doesn't exist
+    if not hasattr(state, 'probe_resp_counter'):
+        state.probe_resp_counter = defaultdict(int)
+    
+    # Track probe responses by BSSID
+    if packet.haslayer(Dot11ProbeResp):
+        try:
+            dot11 = packet[Dot11]
+            bssid = dot11.addr3
+            state.probe_resp_counter[bssid] += 1
+            return False  # Continue processing other packets
+        except Exception as e:
+            logging.error(f"Error processing probe response: {e}")
+            return False
+    
+    # Check for rogue APs via beacon frames
+    if packet.haslayer(Dot11Beacon):
+        try:
+            dot11 = packet[Dot11]
+            bssid = dot11.addr3
+            stats = packet[Dot11Beacon].network_stats()
+            
+            essid = stats.get("ssid")
+            crypto = stats.get("crypto", set())
+
+            if not essid:
+                return False
+                
+            with app.app_context():
+                # Check for protected APs with this ESSID
+                protected_aps = AP.query.filter_by(essid=essid).all()
+                
+                if not protected_aps:
+                    return False
+                
+                for p_ap in protected_aps:
+                    p_crypto = p_ap.crypto.split(',') if isinstance(p_ap.crypto, str) else p_ap.crypto
+                    
+                    p_crypto_normalized = set(p_crypto) if isinstance(p_crypto, list) else {p_crypto}
+                    crypto_normalized = set(crypto) if isinstance(crypto, set) else {crypto}
+                
+                    # Check for same ESSID but different BSSID or different crypto
+                    if p_ap.essid == essid and (p_ap.bssid != bssid or p_crypto_normalized != crypto_normalized):
+                        # Get probe response count for this BSSID
+                        probe_resp_count = state.probe_resp_counter.get(bssid, 0)
+                        karma_threshold = 20  # minimum probe responses to trigger karma attack
+                        
+                        attack_type = "Karma Attack" if probe_resp_count >= karma_threshold else "Rogue AP"
+                        
+                        if attack_type == "Karma Attack":
+                            logging.warning(f"KARMA ATTACK DETECTED: ESSID={essid}, BSSID={bssid}, "
+                                        f"Crypto={crypto}, Protected BSSID={p_ap.bssid}, Protected Crypto={p_ap.crypto}, "
+                                        f"Probe Responses: {probe_resp_count}")
+                        else:
+                            logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, "
+                                        f"Crypto={crypto}, Protected BSSID={p_ap.bssid}, Protected Crypto={p_ap.crypto}")
+
+                        attack_time = datetime.now(timezone.utc)
+                        existing = Attack.query.filter_by(
+                                    attack_type=attack_type,
+                                    bssid=bssid,
+                                    essid=essid
+                                ).first()
+                        if existing:
+                            existing.count += 1
+                            existing.last_seen = attack_time
+                        else:
+                            new_attack = Attack(
+                                attack_type=attack_type,
+                                src_mac=bssid, 
+                                dst_mac="Broadcast",
+                                essid=essid,
+                                bssid=bssid,
+                                channel=stats.get("channel", "N/A"),
+                                signal_strength=getattr(packet, 'dBm_AntSignal', 'N/A'),
+                                count=1
+                            )
+                            DB.session.add(new_attack)
+                        
+                        DB.session.commit()
+                        return True
+            
+            return False
+
+        except Exception as e:
+            logging.error(f"Error in rogue AP detection: {e}")
+            return False
+    
+    return False
+
 def is_beacon_spam(packet):
     """Check if the packet is part of a beacon spam attack and save it to the database"""
     try:
@@ -379,6 +477,7 @@ def packet_handler(packet):
     is_prob_scanner(packet)
     ap_scanner.process_beacon(packet)
     is_beacon_spam(packet)
+    is_rogue_ap(packet)
 
 def start_sniffing(interface):
     """Start the packet sniffing on the specified interface"""
