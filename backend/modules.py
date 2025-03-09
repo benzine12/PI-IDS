@@ -228,7 +228,7 @@ class ProbeScannerDetector:
 probe_detector = ProbeScannerDetector()
 
 class BeaconSpamDetector:
-    def __init__(self, time_window=60, threshold=20):
+    def __init__(self, time_window=60, threshold=500):
         self.detected_aps = {}
         self.beacon_timestamps = defaultdict(list)  # BSSID -> list of timestamps
         self.time_window = time_window

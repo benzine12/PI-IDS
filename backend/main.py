@@ -295,15 +295,19 @@ def is_beacon_spam(packet):
         if not beacon_spam_detector.track_beacon(packet):
             return False
             
+        # Get the BSSID
         if not packet.haslayer(Dot11Beacon):
             return False
-        
-        # Get the BSSID
+            
         bssid = packet[Dot11].addr3
         
         # Update AP info in the beacon spam detector
         if bssid in ap_scanner.detected_aps:
             beacon_spam_detector.update_ap_info(bssid, ap_scanner.detected_aps[bssid])
+        
+        # Add a static variable to track last alert time for each BSSID
+        if not hasattr(is_beacon_spam, "last_alert"):
+            is_beacon_spam.last_alert = {}
         
         # Check for spam (this will only return results when threshold is exceeded)
         spam_results = beacon_spam_detector.check_for_beacon_spam()
@@ -314,11 +318,20 @@ def is_beacon_spam(packet):
         # Process each detected spam result
         for result in spam_results:
             if result["bssid"] == bssid:
+                current_time = time.time()
+                
+                # Only alert once every 60 seconds for the same BSSID
+                if bssid in is_beacon_spam.last_alert and current_time - is_beacon_spam.last_alert[bssid] < 60:
+                    return False
+                
+                is_beacon_spam.last_alert[bssid] = current_time
+                
                 # Get necessary information for attack record
                 essid = result["essid"]
                 signal_strength = result["signal_strength"]
                 channel = result["channel"]
                 count = result["beacon_count"]
+                beacon_rate = result.get("beacon_rate", count / 60.0)  # Beacons per second
                 
                 attack_time = time.strftime("%Y-%m-%d %H:%M:%S")
                 
@@ -344,8 +357,8 @@ def is_beacon_spam(packet):
                             attack_type="Beacon Spam",
                             src_mac=bssid,
                             essid=essid,
-                            channel=channel,
-                            signal_strength=signal_strength,
+                            channel=str(channel),
+                            signal_strength=str(signal_strength),
                             count=count
                         )
                         DB.session.add(new_attack)
@@ -365,7 +378,7 @@ def packet_handler(packet):
     is_deauth(packet)
     is_prob_scanner(packet)
     ap_scanner.process_beacon(packet)
-
+    is_beacon_spam(packet)
 
 def start_sniffing(interface):
     """Start the packet sniffing on the specified interface"""
