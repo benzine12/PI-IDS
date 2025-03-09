@@ -1,4 +1,4 @@
-// notification-system.js - Updated with redirect functionality
+// notification-system.js - Clean version with all unused code removed
 
 class NotificationSystem {
     constructor() {
@@ -9,9 +9,6 @@ class NotificationSystem {
         } else {
             this.toastContainer = document.getElementById('toast-container');
         }
-        
-        // Create the clear toasts button
-        this.createClearToastsButton();
         
         // Initialize navbar notification elements
         this.notificationList = document.getElementById('notificationsList');
@@ -188,54 +185,6 @@ class NotificationSystem {
                 toast.remove();
             }, 300);
         }
-    }
-
-    clearAllToasts() {
-        // Get all toast elements
-        const toasts = this.toastContainer.querySelectorAll('[id^="toast-"]');
-        
-        // Apply exit animation to each toast
-        toasts.forEach(toast => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-100%)';
-            
-            // Remove from DOM after animation completes
-            setTimeout(() => {
-                toast.remove();
-            }, 300);
-        });
-    }
-
-    createClearToastsButton() {
-        const existingButton = document.getElementById('clear-toasts-btn');
-        if (existingButton) {
-            return;
-        }
-        
-        const clearButton = document.createElement('button');
-        clearButton.id = 'clear-toasts-btn';
-        clearButton.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 mt-2 z-50 bg-gray-700 bg-opacity-20 hover:bg-opacity-80 text-white px-3 py-1.5 rounded-md shadow-sm transition-all duration-300 flex items-center space-x-1 text-sm';
-        clearButton.innerHTML = `
-            <i class="fas fa-times-circle"></i>
-            <span>Clear Toasts</span>
-        `;
-        clearButton.style.display = 'none';
-        clearButton.style.marginTop = '-8px'; // Position just above the toasts
-        clearButton.onclick = () => this.clearAllToasts();
-        
-        document.body.appendChild(clearButton);
-        
-        // Show button when toasts exist, hide when none exist
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList') {
-                    const hasToasts = this.toastContainer.children.length > 0;
-                    clearButton.style.display = hasToasts ? 'flex' : 'none';
-                }
-            }
-        });
-        
-        observer.observe(this.toastContainer, { childList: true });
     }
 
     addNavbarNotification(message, type = 'warning') {

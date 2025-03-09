@@ -547,7 +547,6 @@ async function refreshSystemStats() {
         if (error.name !== 'AbortError') {
             isServerConnected = false;
             updateConnectionStatus(false);
-            // Clear any existing data since we're disconnected
             document.getElementById('cpuUsage').textContent = 'N/A';
             document.getElementById('memoryUsage').textContent = 'N/A';
             document.getElementById('diskUsage').textContent = 'N/A';
