@@ -170,10 +170,44 @@ def arguments_handler():
     except argparse.ArgumentError as e:
         print('Catching an argumentError, ' + e)
 
+def channel_hopper(interface):
+    """Hops between wireless channels to scan all networks (2.4GHz & 5GHz)"""
+    
+    # 2.4GHz channels
+    channels_2ghz = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    
+    # 5GHz channels (non-radar channels first)
+    channels_5ghz = [36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140]
+    
+    # Combine all channels
+    all_channels = channels_2ghz + channels_5ghz
+    
+    def hop_channels():
+        while True:
+            for channel in all_channels:
+                try:
+                    subprocess.run(["sudo", "iw", "dev", interface, "set", "channel", str(channel)], 
+                                  stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    time.sleep(0.3)  # Hop every 0.3 seconds
+                except:
+                    # Skip channels not supported by the adapter
+                    pass
+    
+    # Start hopping in background thread
+    hopper = threading.Thread(target=hop_channels)
+    hopper.daemon = True
+    hopper.start()
+
 def to_monitor(interface):
-    """Put the interface in monitor mode"""
+    """Put the interface in monitor mode and start channel hopping"""
     try:
+        # Enable monitor mode
         subprocess.run(["sudo", "airmon-ng", "start", interface], check=True)
+        
+        # Start channel hopping
+        channel_hopper(interface)
+        
+        print(f"Started {interface} in monitor mode with channel hopping")
     except Exception as e:
         print(f"Error putting interface in monitor mode: {e}")
         exit()
@@ -294,6 +328,7 @@ def is_rogue_ap(packet):
     Detects rogue APs and karma attacks by checking for:
     1. Same ESSID as protected AP but different crypto (rogue AP)
     2. Same ESSID, different crypto AND lots of probe responses (karma attack)
+    3. Uses OUI (first 8 digits of BSSID) comparison for better detection
     """
     
     # Initialize the probe response counter if it doesn't exist
@@ -332,13 +367,20 @@ def is_rogue_ap(packet):
                     return False
                 
                 for p_ap in protected_aps:
+                    # Extract first 8 digits (OUI) from BSSID for comparison
+                    p_ap_oui = p_ap.bssid[:8] if p_ap.bssid else ""
+                    current_ap_oui = bssid[:8] if bssid else ""
+                    
                     p_crypto = p_ap.crypto.split(',') if isinstance(p_ap.crypto, str) else p_ap.crypto
                     
                     p_crypto_normalized = set(p_crypto) if isinstance(p_crypto, list) else {p_crypto}
                     crypto_normalized = set(crypto) if isinstance(crypto, set) else {crypto}
                 
-                    # Check for same ESSID but different BSSID or different crypto
-                    if p_ap.essid == essid and (p_ap.bssid != bssid or p_crypto_normalized != crypto_normalized):
+                    # Check for same ESSID but different OUI or different crypto
+                    is_different_device = p_ap_oui != current_ap_oui
+                    is_different_crypto = p_crypto_normalized != crypto_normalized
+                    
+                    if p_ap.essid == essid and (is_different_device or is_different_crypto):
                         # Get probe response count for this BSSID
                         probe_resp_count = state.probe_resp_counter.get(bssid, 0)
                         karma_threshold = 20  # minimum probe responses to trigger karma attack
@@ -346,12 +388,14 @@ def is_rogue_ap(packet):
                         attack_type = "Karma Attack" if probe_resp_count >= karma_threshold else "Rogue AP"
                         
                         if attack_type == "Karma Attack":
-                            logging.warning(f"KARMA ATTACK DETECTED: ESSID={essid}, BSSID={bssid}, "
-                                        f"Crypto={crypto}, Protected BSSID={p_ap.bssid}, Protected Crypto={p_ap.crypto}, "
+                            logging.warning(f"KARMA ATTACK DETECTED: ESSID={essid}, BSSID={bssid}, OUI={current_ap_oui}, "
+                                        f"Crypto={crypto}, Protected BSSID={p_ap.bssid}, Protected OUI={p_ap_oui}, "
+                                        f"Protected Crypto={p_ap.crypto}, "
                                         f"Probe Responses: {probe_resp_count}")
                         else:
-                            logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, "
-                                        f"Crypto={crypto}, Protected BSSID={p_ap.bssid}, Protected Crypto={p_ap.crypto}")
+                            logging.warning(f"ROGUE AP DETECTED: ESSID={essid}, BSSID={bssid}, OUI={current_ap_oui}, "
+                                        f"Crypto={crypto}, Protected BSSID={p_ap.bssid}, Protected OUI={p_ap_oui}, "
+                                        f"Protected Crypto={p_ap.crypto}")
 
                         attack_time = datetime.now(timezone.utc)
                         existing = Attack.query.filter_by(
