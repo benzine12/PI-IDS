@@ -19,8 +19,6 @@ import os
 import sys
 import time
 import random
-import subprocess
-import shutil
 from scapy.all import sendp, RadioTap, Dot11, Dot11Beacon, Dot11Elt
 
 # Some fake network names to use in beacon frames
@@ -127,33 +125,10 @@ def send_beacon_frames(interface, num_beacons=100, delay=0.05, duration=30):
     print(f"\nSent {total_sent} beacon frames for {num_beacons} fake networks")
     print("Check your WIDS for 'Beacon Spam' detection alerts!")
 
-def setup_virtual_env():
-    """Set up a virtual environment with necessary dependencies."""
-    # Check if the env folder exists and delete it if present
-    if os.path.exists("env"):
-        print("Removing existing virtual environment...")
-        shutil.rmtree("env")
-    else:
-        print("No existing virtual environment found. Proceeding...")
-    
-    # Create a new virtual environment
-    print("Creating a new virtual environment...")
-    subprocess.run(["python3", "-m", "venv", "env"], check=True)
-    
-    # Activate the virtual environment and install scapy
-    activate_script = os.path.join("env", "bin", "activate")
-    print("Activating virtual environment and installing dependencies...")
-    subprocess.run(["bash", "-c", f"source {activate_script} && pip install scapy"], check=True)
-    
-    # Run the script with sudo
-    print("Running beacon_spam_test.py with sudo...")
-    subprocess.run(["sudo", f"./env/bin/python", "beacon_spam_test.py"] + sys.argv[1:], check=True)
-
 if __name__ == "__main__":
     # If not run with sudo, set up virtual environment and re-run with sudo
     if os.geteuid() != 0:
         print("This script requires root privileges. Setting up virtual environment...")
-        setup_virtual_env()
         sys.exit(0)
 
     if len(sys.argv) < 2:

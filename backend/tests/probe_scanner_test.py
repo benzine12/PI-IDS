@@ -13,10 +13,6 @@ Requirements:
   - Root/sudo privileges
   - Wireless interface in monitor mode
 """
-
-import os
-import shutil
-import subprocess
 import sys
 import time
 import random
@@ -79,31 +75,7 @@ def send_probe_requests(interface, num_probes=30, delay=0.2):
     print(f"\nSent {num_probes} probe requests from MAC {src_mac}")
     print("Check your WIDS for 'Probe Scanner' detection alerts!")
 
-def setup_virtual_env():
-    
-    # Check if the env folder exists and delete it if present
-    if os.path.exists("env"):
-        print("Removing existing virtual environment...")
-        shutil.rmtree("env")
-    else:
-        print("No existing virtual environment found. Proceeding...")
-    
-    # Create a new virtual environment
-    print("Creating a new virtual environment...")
-    subprocess.run(["python3", "-m", "venv", "env"], check=True)
-    
-    # Activate the virtual environment
-    activate_script = os.path.join("env", "bin", "activate")
-    print("Activating virtual environment...")
-    subprocess.run(["bash", "-c", f"source {activate_script} && pip install scapy"], check=True)
-    
-    # Run main.py with sudo
-    print("Running probe_scanner_test.py with sudo...")
-    subprocess.run(["sudo", f"./env/bin/python", "probe_scanner_test.py", "wlan2"], check=True)
-
-
 if __name__ == "__main__":
-    setup_virtual_env()
     if len(sys.argv) < 2:
         print(f"Usage: sudo python3 {sys.argv[0]} <interface> [number_of_probes] [delay]")
         sys.exit(1)
