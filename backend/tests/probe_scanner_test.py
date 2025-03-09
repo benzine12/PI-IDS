@@ -1,18 +1,3 @@
-#!/usr/bin/env python3
-"""
-Probe Scanner Test Script - Generates probe requests to test WIDS detection
-
-This script sends multiple probe requests with different SSIDs to simulate
-a network scanning tool and trigger the ProbeScannerDetector in your WIDS.
-
-Usage:
-  sudo python3 probe_scanner_test.py <interface> [number_of_probes] [delay]
-
-Requirements:
-  - Scapy
-  - Root/sudo privileges
-  - Wireless interface in monitor mode
-"""
 import sys
 import time
 import random

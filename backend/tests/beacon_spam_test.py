@@ -1,20 +1,3 @@
-#!/usr/bin/env python3
-"""
-Beacon Spam Test Script - Generates multiple beacon frames to test WIDS detection
-
-This script sends a large number of beacon frames with different SSIDs from the same 
-MAC address to simulate a beacon flooding attack and trigger the BeaconSpamDetector 
-in your WIDS.
-
-Usage:
-  sudo python3 beacon_spam_test.py <interface> [number_of_beacons] [delay]
-
-Requirements:
-  - Scapy
-  - Root/sudo privileges
-  - Wireless interface in monitor mode
-"""
-
 import os
 import sys
 import time
