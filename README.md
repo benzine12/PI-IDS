@@ -1,9 +1,9 @@
-# WIDS - Wireless Intrusion Detection System
+# PI-IDS - WIFI attacking Detection System on Raspberry Pi 
 
 ![WIDS Banner](https://img.shields.io/badge/WIDS-Wireless%20Intrusion%20Detection-blue?style=for-the-badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-WIDS is a comprehensive wireless intrusion detection system designed to monitor and protect wireless networks. It detects various types of wireless attacks in real-time, tracks access points, and provides a web-based dashboard for monitoring and management.
+PI-IDS is a detection system designed to monitor and protect wireless networks with Raspberry Pi. It detects various types of wireless attacks in real-time, tracks access points, and provides a web-based dashboard for monitoring and management.
 
 
 > **⚠️ DISCLAIMER**: This tool is developed for educational purposes only. The developer takes no responsibility for any misuse or for the accuracy of attack detection. Use at your own risk and only on networks you own or have permission to test.
@@ -16,10 +16,9 @@ WIDS is a comprehensive wireless intrusion detection system designed to monitor 
   - Probe scanning attacks
   - Beacon spam attacks
   - Rogue AP detection
-  - Karma attacks
+  - KARMA/MANA attacks
 - 📊 Advanced packet analysis and threat classification
 - 🔐 Protected AP management system
-- 📱 Responsive web-based dashboard with real-time statistics
 - 🌓 Dark/light theme support
 - 📊 System resource monitoring
 - 🔔 Real-time alert notifications
@@ -108,7 +107,7 @@ For quick testing, you can use the default credentials:
 - **Username**: `admin`
 - **Password**: `admin`
 
-However, for production environments, it's strongly recommended to create a new user with a secure password.
+However, for production environments, it's strongly recommended to create a new user with a secure password and delete default password.
 
 
 ## 📋 Command Line Arguments
