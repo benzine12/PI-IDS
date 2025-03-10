@@ -1,6 +1,6 @@
 # PI-IDS - WIFI attacking Detection System on Raspberry Pi 
 
-![WIDS Banner](https://img.shields.io/badge/WIDS-Wireless%20Intrusion%20Detection-blue?style=for-the-badge)
+![PI-IDS Banner](https://img.shields.io/badge/PI-IDS-Wireless%20Intrusion%20Detection-blue?style=for-the-badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 PI-IDS is a detection system designed to monitor and protect wireless networks with Raspberry Pi. It detects various types of wireless attacks in real-time, tracks access points, and provides a web-based dashboard for monitoring and management.
