@@ -107,7 +107,7 @@ For quick testing, you can use the default credentials:
 - **Username**: `admin`
 - **Password**: `admin`
 
-However, for production environments, it's strongly recommended to create a new user with a secure password and delete default password.
+However, for production environments, it's strongly recommended to create a new user with a secure password and delete default.
 
 
 ## 📋 Command Line Arguments
