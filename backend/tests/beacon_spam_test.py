@@ -1,7 +1,7 @@
-import os
 import sys
 import time
 import random
+import argparse
 from scapy.all import sendp, RadioTap, Dot11, Dot11Beacon, Dot11Elt
 
 FAKE_NETWORKS = [
@@ -13,15 +13,46 @@ FAKE_NETWORKS = [
     "Public_WiFi", "Open_WiFi", "WiFi_Access", "Internet"
 ]
 
+def argument_handler():
+    try:
+        global interface,num_beacons,delay,seconds
+
+        # initialize parser
+        parser = argparse.ArgumentParser()
+
+        # Adding optional argument
+        parser.add_argument("-i","--Interface", help = "Enter wlan interface")
+        parser.add_argument("-b", "--Beacons", type=int, help="Enter number of beacons")
+        parser.add_argument("-d", "--Delay", type=float, help="Enter delay between every sending")
+        parser.add_argument("-s", "--Seconds", type=int, help="Enter number of seconds for attack duration")
+
+        # read arguments from command line
+        args = parser.parse_args()
+
+        # check wich arguments written
+        if args.Interface:
+            interface = args.Interface
+        else:
+            print("Enter wlan interface to work with")
+            sys.exit(1)
+        if args.Beacons:
+            num_beacons = args.Beacons
+        if args.Delay:
+            delay = args.Delay
+        if args.Seconds:
+            seconds = args.Seconds
+
+    except argparse.ArgumentError as e:
+        print('Catching an argumentError, ' + e)
+
 def generate_random_mac():
     """Generate a random MAC address."""
     return ':'.join(['{:02x}'.format(random.randint(0, 255)) for _ in range(6)])
 
-def send_beacon_frames(interface, num_beacons=100, delay=0.05, duration=30):
+def send_beacon_frames(interface, num_beacons, delay, duration):
     """
     Send multiple beacon frames to simulate a beacon flooding attack.
     """
-    # Use the same source MAC for all beacons to trigger detection
     src_mac = generate_random_mac()
     
     # Select a fixed number of networks to make constant beacons for
@@ -99,30 +130,15 @@ def send_beacon_frames(interface, num_beacons=100, delay=0.05, duration=30):
     
     total_sent = count
     print(f"\nSent {total_sent} beacon frames for {num_beacons} fake networks")
-    print("Check your WIDS for 'Beacon Spam' detection alerts!")
 
 if __name__ == "__main__":
-    # If not run with sudo, set up virtual environment and re-run with sudo
-    if os.geteuid() != 0:
-        print("This script requires root privileges. Setting up virtual environment...")
-        sys.exit(0)
 
-    if len(sys.argv) < 2:
-        print(f"Usage: sudo python3 {sys.argv[0]} <interface> [number_of_beacons] [delay] [duration]")
-        sys.exit(1)
-        
-    interface = sys.argv[1]
+    # default parameters for an attack if no additional optional 
+    delay = 0.01
+    seconds = 60
+    num_beacons = 25
+
+    interface = ''
+    argument_handler()
     
-    num_beacons = 25  # Default number of beacons (reduced to be more manageable)
-    if len(sys.argv) > 2:
-        num_beacons = int(sys.argv[2])
-        
-    delay = 0.01  # Default delay between beacons (faster for better visibility)
-    if len(sys.argv) > 3:
-        delay = float(sys.argv[3])
-    
-    duration = 60  # Default duration in seconds
-    if len(sys.argv) > 4:
-        duration = int(sys.argv[4])
-    
-    send_beacon_frames(interface, num_beacons, delay, duration)
+    send_beacon_frames(interface, num_beacons, delay, seconds)
