@@ -29,7 +29,7 @@ def argument_handler():
         # read arguments from command line
         args = parser.parse_args()
 
-        # check wich arguments written
+        # check wich arguments given
         if args.Interface:
             interface = args.Interface
         else:
@@ -133,7 +133,7 @@ def send_beacon_frames(interface, num_beacons, delay, duration):
 
 if __name__ == "__main__":
 
-    # default parameters for an attack if no additional optional 
+    # default parameters - if no additional optional 
     delay = 0.01
     seconds = 60
     num_beacons = 25
