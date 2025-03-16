@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 import argparse
 import re
 from collections import defaultdict
+from dotenv import load_dotenv
 
 interface = ''
 
@@ -31,8 +32,10 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wids.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
+    load_dotenv()
+
     # JWT Configuration
-    app.config['JWT_SECRET_KEY'] = 'your_secret_key_here'
+    app.config['JWT_SECRET_KEY'] =  os.getenv('JWT_KEY')
     app.config['JWT_ALGORITHM'] = "HS256"
     app.config['JWT_TOKEN_LOCATION'] = ["cookies"]
     app.config['JWT_COOKIE_NAME'] = "access_token_cookie"
