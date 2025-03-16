@@ -73,42 +73,40 @@ python_wifi_attack_detection/
    cd python_wifi_attack_detection
    ```
 
-2. **Create and activate a virtual environment**:
+2. **Run the installation.py**:
    ```bash
-   python3 -m venv env
-   source env/bin/activate 
+   sudo installation.py
+   ```
+   This will create an:
+   ```bash
+      ENV folder
+      .env file 
+      install requirements.txt
+      and generate JWT_KEY in the .env file
    ```
 
-3. **Install requirements**:
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-
-4. **Create a user account** (or use the default credentials mentioned below):
+3. **Create a user account** :
    ```bash
    sudo python main.py -c your_username
    ```
+   
+   > ⚠️ You can skip this if you use the default:
+   - **Username**: `admin`
+   - **Password**: `admin`
 
-5. **Run the application**:
+   for production environments, it's strongly recommended to create a new user with a secure password and delete default!
+
+4. **Run the application**:
    ```bash
    sudo python main.py -i wlan0
    ```
    Replace `wlan0` with your wireless interface name capable of monitor mode.
 
-6. **Access the dashboard**:
+5. **Access the dashboard**:
    Open your browser and navigate to:
    ```
    http://localhost:5000
    ```
-
-## 🏃‍♂️ Quick Start
-
-For quick testing, you can use the default credentials:
-- **Username**: `admin`
-- **Password**: `admin`
-
-However, for production environments, it's strongly recommended to create a new user with a secure password and delete default.
-
 
 ## 📋 Command Line Arguments
 
