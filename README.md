@@ -71,6 +71,7 @@ PI-IDS/
    ```bash
    git clone https://github.com/benzine12/PI-IDS
    cd PI-IDS/
+   cd backend
    ```
 
 2. **Run the installation.py**:
