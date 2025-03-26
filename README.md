@@ -76,7 +76,7 @@ PI-IDS/
 
 2. **Run the installation.py**:
    ```bash
-   sudo installation.py
+   sudo python3 installation.py
    ```
    This will create an:
    ```bash
