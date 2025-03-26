@@ -88,7 +88,7 @@ PI-IDS/
 
 3. **Create a user account** :
    ```bash
-   sudo python main.py -c your_username
+   sudo ./env/bin/python main.py -c YOUR_USERNAME
    ```
    
    > ⚠️ You can skip this if you use the default:
@@ -99,7 +99,7 @@ PI-IDS/
 
 4. **Run the application**:
    ```bash
-   sudo python main.py -i wlan0
+   sudo ./env/bin/python main.py -i wlan0
    ```
    Replace `wlan0` with your wireless interface name capable of monitor mode.
 
