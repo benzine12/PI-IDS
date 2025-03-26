@@ -26,7 +26,7 @@ PI-IDS is a detection system designed to monitor and protect wireless networks w
 ## 📂 Project Structure
 
 ```
-python_wifi_attack_detection/
+PI-IDS/
 ├── backend/
 │   ├── data.py                   # Database and state management
 │   ├── instance/                 # SQLite database instance
@@ -69,8 +69,8 @@ python_wifi_attack_detection/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/benzine12/python_wifi_attack_detection.git
-   cd python_wifi_attack_detection
+   git clone https://github.com/benzine12/PI-IDS
+   cd PI-IDS/
    ```
 
 2. **Run the installation.py**:
