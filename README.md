@@ -218,8 +218,8 @@ The repository includes attack simulation tools to test and validate detection c
 Tests the system's ability to detect beacon flooding attacks:
 
 ```bash
-cd backend/tests
-sudo python beacon_spam_test.py wlan0mon
+cd backend
+sudo sudo env/bin/python tests/beacon_spam_test.py WLAN_INTERFACE
 ```
 
 ### Probe Scanner Testing
@@ -227,8 +227,8 @@ sudo python beacon_spam_test.py wlan0mon
 Tests the system's ability to detect aggressive network scanning:
 
 ```bash
-cd backend/tests
-sudo python probe_scanner_test.py wlan0mon
+cd backend
+sudo sudo env/bin/python tests/probe_scanner_test.py WLAN_INTERFACE
 ```
 
 > **IMPORTANT**: Always use a different wireless interface for testing than the one WIDS is monitoring. For example, if WIDS is monitoring `wlan0`, use `wlan1` for testing.
