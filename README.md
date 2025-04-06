@@ -59,7 +59,7 @@ PI-IDS/
 
 ## 🔧 Prerequisites
 
-- Python 3.6+
+- Python 3.13
 - Linux-based system (Ubuntu, Kali Linux, Raspbian)
 - Wireless adapter capable of monitor mode ([supported adapters list](https://www.aircrack-ng.org/doku.php?id=compatible_cards))
 - Root/sudo privileges
