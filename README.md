@@ -219,7 +219,7 @@ Tests the system's ability to detect beacon flooding attacks:
 
 ```bash
 cd backend
-sudo env/bin/python tests/beacon_spam_test.py WLAN_INTERFACE
+sudo env/bin/python tests/beacon_spam_test.py -i WLAN_INTERFACE
 ```
 
 ### Probe Scanner Testing
@@ -228,7 +228,7 @@ Tests the system's ability to detect aggressive network scanning:
 
 ```bash
 cd backend
-sudo env/bin/python tests/probe_scanner_test.py WLAN_INTERFACE
+sudo env/bin/python tests/probe_scanner_test.py -i WLAN_INTERFACE
 ```
 
 > **IMPORTANT**: Always use a different wireless interface for testing than the one WIDS is monitoring. For example, if WIDS is monitoring `wlan0`, use `wlan1` for testing.
