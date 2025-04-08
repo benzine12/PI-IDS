@@ -99,9 +99,9 @@ PI-IDS/
 
 4. **Run the application**:
    ```bash
-   sudo ./env/bin/python main.py -i wlan0
+   sudo ./env/bin/python main.py -i YOUR_INTERFACE
    ```
-   Replace `wlan0` with your wireless interface name capable of monitor mode.
+   Replace `YOUR_INTERFACE` with your wireless interface name capable of monitor mode.
 
 5. **Access the dashboard**:
    Open your browser and navigate to:
